@@ -1,0 +1,53 @@
+# =============================================================================
+# Docker Garage - Development Dockerfile
+# =============================================================================
+# Base image: Node.js 20 on Alpine Linux (small & secure).
+# This image runs the Docker Garage app itself inside a container.
+# =============================================================================
+
+FROM node:20-alpine
+
+# Install:
+#   - docker-cli          : so we can run "docker" commands inside the container
+#   - docker-cli-compose  : Compose V2 plugin ("docker compose" command)
+#   - shadow              : provides 'getent' for group lookups in the entrypoint
+#   - su-exec             : lightweight tool to drop privileges (like gosu)
+RUN apk add --no-cache \
+    docker-cli \
+    docker-cli-compose \
+    shadow \
+    su-exec
+
+# Create a non-root user and group for the application.
+# Running as non-root is a Docker security best practice.
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
+# Set the working directory inside the container.
+WORKDIR /app
+
+# Copy package files FIRST to leverage Docker's layer cache.
+# npm install only re-runs when package.json/package-lock.json change.
+COPY package*.json ./
+
+# Install all npm dependencies (including devDependencies like nodemon).
+RUN npm install
+
+# Copy the rest of the application source code into the image.
+COPY . .
+
+# Copy the entrypoint script that fixes Docker socket permissions at startup.
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
+# Give the non-root user ownership of the app directory.
+RUN chown -R appuser:appgroup /app
+
+# Tell Docker which port the app listens on (documentation purpose).
+EXPOSE 3000
+
+# The entrypoint script runs first (fixes socket perms), then hands off to CMD.
+ENTRYPOINT ["/docker-entrypoint.sh"]
+
+# Start the app with nodemon for hot-reload during development.
+# In docker-compose, we mount ./src so changes reflect without rebuilding.
+CMD ["npm", "run", "dev"]

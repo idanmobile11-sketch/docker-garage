@@ -1,0 +1,12 @@
+node_modules/
+.env
+.env.*
+npm-debug.log*
+.DS_Store
+Thumbs.db
+
+# Generated session files (written to host /tmp at runtime)
+generated/
+
+# Runtime log (written by logger.js — lives in /tmp/docker-garage on the host)
+docker-garage.log

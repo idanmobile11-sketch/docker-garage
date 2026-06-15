@@ -1,0 +1,16 @@
+# Exclude node_modules — installed fresh inside the container
+node_modules/
+
+# Exclude git history from the build context
+.git/
+.gitignore
+
+# Exclude development/editor files
+.env
+.env.*
+*.log
+npm-debug.log*
+
+# Exclude OS files
+.DS_Store
+Thumbs.db

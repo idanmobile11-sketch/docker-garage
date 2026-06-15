@@ -1,0 +1,18 @@
+{
+  "name": "docker-garage",
+  "version": "1.0.0",
+  "description": "A beginner-friendly web app for visually configuring, generating, and testing custom Docker environments.",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js"
+  },
+  "dependencies": {
+    "dockerode": "^4.0.2",
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}

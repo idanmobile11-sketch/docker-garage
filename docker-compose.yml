@@ -1,0 +1,59 @@
+# =============================================================================
+# Docker Garage - docker-compose.yml
+# =============================================================================
+# This file defines the Docker Garage application container.
+#
+# IMPORTANT - Docker-outside-of-Docker (DooD) architecture:
+#   We mount the HOST's Docker socket into our app container.
+#   This means when the app runs "docker compose up" for a user's config,
+#   the new containers are created on the HOST — not nested inside ours.
+#   They are "sibling" containers, not children.
+#
+# CROSS-PLATFORM COMPATIBILITY:
+#   The socket path /var/run/docker.sock works on:
+#     - Linux       : native Docker daemon
+#     - macOS       : Docker Desktop creates a socket here via symlink
+#     - Windows     : Docker Desktop + WSL2 exposes the socket at this path
+# =============================================================================
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: docker-garage-app
+    ports:
+      # Map host port 3000 to container port 3000
+      - "3000:3000"
+    volumes:
+      # --- Source code mounts (enables hot-reload with nodemon) ---
+      - ./src:/app/src
+      - ./public:/app/public
+
+      # --- Docker socket mount (the core of DooD architecture) ---
+      # The entrypoint.sh script handles fixing permissions for non-root user.
+      - /var/run/docker.sock:/var/run/docker.sock
+
+      # --- Named volume for node_modules ---
+      # This prevents the host's ./node_modules (or lack thereof) from
+      # overwriting the node_modules installed inside the container image.
+      - node_modules:/app/node_modules
+
+      # --- Test Drive shared temp directory (DooD fix) ---
+      # The app writes generated Dockerfile/compose files here.
+      # By bind-mounting this path from the HOST, the docker:cli runner
+      # container can also bind-mount the same host path — making the
+      # files visible to the Docker daemon when it spawns sibling containers.
+      # Without this, the path only exists inside our container, invisible to the host.
+      - /tmp/docker-garage:/tmp/docker-garage
+
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+
+    # Restart the container if it crashes (not on manual stop)
+    restart: unless-stopped
+
+# Declare the named volume used for node_modules.
+volumes:
+  node_modules:

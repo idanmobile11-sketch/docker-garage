@@ -1,0 +1,9 @@
+# All text files use LF in the repo
+* text=auto eol=lf
+
+# Shell scripts MUST be LF — Alpine sh will fail on CRLF
+*.sh text eol=lf
+
+# Windows-only files can keep CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
