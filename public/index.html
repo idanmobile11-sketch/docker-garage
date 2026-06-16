@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Docker Garage</title>
+
+    <!-- xterm.js terminal emulator (Phase 4) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -25,7 +31,7 @@
             border-radius: 10px;
             padding: 24px 28px;
             width: 100%;
-            max-width: 720px;
+            max-width: 940px;
         }
 
         /* ---- Hero banner ---- */
@@ -59,8 +65,10 @@
         .phase-item { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid #21262d; font-size: 0.84rem; }
         .phase-item:last-child { border-bottom: none; }
         .badge { padding: 2px 8px; border-radius: 20px; font-size: 0.68rem; font-weight: bold; white-space: nowrap; }
-        .badge.done    { background: #1f6feb; color: #fff; }
-        .badge.pending { background: #21262d; color: #8b949e; }
+        .badge.done         { background: #1f6feb; color: #fff; }
+        .badge.pending      { background: #21262d; color: #8b949e; }
+        .badge.active-phase { background: #238636; color: #fff; animation: glow 2s ease-in-out infinite; }
+        @keyframes glow { 0%,100%{box-shadow:0 0 4px #3fb950} 50%{box-shadow:0 0 14px #3fb950} }
 
         /* ---- Generator panel ---- */
         .gen-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
@@ -120,6 +128,85 @@
             cursor: pointer; margin-left: 8px;
         }
         .copy-btn:hover { background: #30363d; }
+
+        /* ---- Test Drive two-column body ---- */
+        .td-body {
+            display: grid;
+            grid-template-columns: 1fr 260px;
+            gap: 12px;
+            align-items: start;
+        }
+        @media (max-width: 780px) { .td-body { grid-template-columns: 1fr; } }
+
+        /* ---- xterm.js container ---- */
+        #xterm-container {
+            background: #010409;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 6px 8px;
+            height: 340px;
+            overflow: hidden;
+        }
+        /* Force xterm viewport background to match card */
+        .xterm-viewport { background-color: #010409 !important; }
+
+        /* ---- Session bar above the terminal ---- */
+        .td-session-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.72rem;
+            color: #484f58;
+            margin-bottom: 4px;
+            padding: 0 2px;
+            height: 18px;
+        }
+        #td-elapsed { color: #58a6ff; font-variant-numeric: tabular-nums; }
+
+        /* ---- Container status sidebar ---- */
+        .stack-panel {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 12px;
+        }
+        .stack-panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .stack-panel-header .label { margin-bottom: 0; }
+        .refresh-btn {
+            background: none; border: 1px solid #30363d; color: #8b949e;
+            border-radius: 4px; padding: 2px 8px; font-size: 0.68rem;
+            font-family: inherit; cursor: pointer; transition: background 0.1s;
+        }
+        .refresh-btn:hover { background: #21262d; color: #c9d1d9; }
+
+        .container-item {
+            border-bottom: 1px solid #21262d;
+            padding: 8px 0;
+            font-size: 0.74rem;
+        }
+        .container-item:last-child { border-bottom: none; }
+        .c-name  { color: #c9d1d9; font-weight: 600; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .c-image { color: #484f58; font-size: 0.68rem; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .c-meta  { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .c-ports { color: #58a6ff; font-size: 0.68rem; }
+
+        .s-badge {
+            display: inline-flex; align-items: center; gap: 3px;
+            padding: 1px 7px; border-radius: 10px;
+            font-size: 0.64rem; font-weight: bold; text-transform: uppercase; white-space: nowrap;
+        }
+        .s-badge.running { background: #0d2b0d; color: #3fb950; border: 1px solid #238636; }
+        .s-badge.exited  { background: #2b0d0d; color: #f85149; border: 1px solid #6e1a1a; }
+        .s-badge.other   { background: #21262d; color: #8b949e; border: 1px solid #30363d; }
+        .s-badge .s-dot  { width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+        .s-badge.running .s-dot { animation: pulse 1.5s infinite; }
+
+        .stack-empty { color: #484f58; font-style: italic; font-size: 0.78rem; padding: 10px 0; }
     </style>
 </head>
 <body>
@@ -160,11 +247,10 @@
         </div>
     </div>
 
-    <!-- ===== PHASE 2: BLUEPRINT ENGINE DEMO ===== -->
+    <!-- ===== BLUEPRINT ENGINE ===== -->
     <div class="card">
-        <h2>&#x1F527; Phase 2 — Blueprint Engine (live demo)</h2>
+        <h2>&#x1F527; Blueprint Engine</h2>
 
-        <!-- Base + version -->
         <div class="gen-form">
             <label>
                 App Name
@@ -191,7 +277,6 @@
             </label>
         </div>
 
-        <!-- Auxiliary services -->
         <div class="label">Auxiliary Services (click to toggle)</div>
 
         <div class="service-group">
@@ -201,7 +286,6 @@
                 <span class="pill" data-service="memcached">Memcached</span>
             </div>
         </div>
-
         <div class="service-group">
             <span class="cat-label">Database</span>
             <div class="service-pills">
@@ -210,7 +294,6 @@
                 <span class="pill" data-service="mongodb">MongoDB</span>
             </div>
         </div>
-
         <div class="service-group">
             <span class="cat-label">Search</span>
             <div class="service-pills">
@@ -218,14 +301,12 @@
                 <span class="pill" data-service="kibana">Kibana</span>
             </div>
         </div>
-
         <div class="service-group">
             <span class="cat-label">Messaging</span>
             <div class="service-pills">
                 <span class="pill" data-service="rabbitmq">RabbitMQ</span>
             </div>
         </div>
-
         <div class="service-group">
             <span class="cat-label">Storage &amp; Web</span>
             <div class="service-pills">
@@ -233,7 +314,6 @@
                 <span class="pill" data-service="nginx" id="pill-nginx">Nginx</span>
             </div>
         </div>
-
         <div class="service-group">
             <span class="cat-label">Dev Tools</span>
             <div class="service-pills">
@@ -242,13 +322,12 @@
             </div>
         </div>
 
-        <!-- Options checkboxes -->
         <div class="checkboxes">
             <label><input type="checkbox" id="opt-nonroot" checked /> Non-root user</label>
             <label><input type="checkbox" id="opt-volumes" checked /> Named volumes</label>
             <label><input type="checkbox" id="opt-healthcheck" checked /> Healthcheck</label>
             <label>
-                Network Driver:
+                Network:
                 <select id="networkDriver" style="margin-left:6px;background:#0d1117;border:1px solid #30363d;color:#c9d1d9;border-radius:4px;padding:2px 6px;font-family:inherit;font-size:0.8rem;">
                     <option value="bridge">bridge</option>
                     <option value="host">host</option>
@@ -260,7 +339,6 @@
             Generate Dockerfile &amp; docker-compose.yml
         </button>
 
-        <!-- Output area -->
         <div style="margin-top:16px;">
             <div class="tabs">
                 <button class="tab-btn active" onclick="switchTab('dockerfile', this)">Dockerfile</button>
@@ -275,15 +353,16 @@
         </div>
     </div>
 
-    <!-- ===== PHASE 3: TEST DRIVE ===== -->
+    <!-- ===== TEST DRIVE ===== -->
     <div class="card">
-        <h2>&#x1F680; Phase 3 &mdash; Test Drive (live execution)</h2>
+        <h2>&#x1F680; Test Drive</h2>
         <p style="color:#8b949e;font-size:0.82rem;margin-bottom:16px;">
-            Generates files from the config above, writes them to the host, then runs
+            Generates files from the config above, then runs
             <code style="background:#0d1117;padding:1px 5px;border-radius:3px;color:#58a6ff;">docker compose up -d --build</code>
-            on the host daemon. Live logs stream here in real time.
+            on the host daemon. Live logs stream in the terminal below.
         </p>
 
+        <!-- Controls row -->
         <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
             <button class="gen-btn" id="td-start-btn" style="width:auto;padding:8px 22px;" onclick="startTestDrive()">
                 &#x25B6; Start Test Drive
@@ -302,7 +381,13 @@
                 onclick="runPreflight()">
                 &#x1F50D; Pre-flight Check
             </button>
-            <span id="td-session" style="font-size:0.74rem;color:#484f58;font-family:monospace;"></span>
+            <button class="gen-btn" id="td-clear-btn"
+                style="width:auto;padding:8px 14px;background:#21262d;font-size:0.78rem;color:#8b949e;"
+                onmouseenter="this.style.background='#30363d';this.style.color='#c9d1d9'"
+                onmouseleave="this.style.background='#21262d';this.style.color='#8b949e'"
+                onclick="clearTerminal()">
+                &#x239A; Clear
+            </button>
         </div>
 
         <!-- Pre-flight results panel -->
@@ -312,24 +397,25 @@
             <div id="preflight-ports"></div>
         </div>
 
-        <!-- Simple terminal (will be upgraded to xterm.js in Phase 4) -->
-        <div id="terminal" style="
-            background:#010409;
-            border:1px solid #30363d;
-            border-radius:6px;
-            padding:14px 16px;
-            font-size:0.78rem;
-            line-height:1.75;
-            min-height:180px;
-            max-height:420px;
-            overflow-y:auto;
-            font-family:'Courier New',Courier,monospace;
-            white-space:pre-wrap;
-            word-break:break-all;">
-            <span id="td-placeholder" style="color:#484f58;font-style:italic;white-space:normal;">
-Click &#x25B6; Start Test Drive to launch your configured stack and watch live Docker logs appear here.
-&#x26A0;&#xFE0F;  Note: the first run pulls the <code>docker:cli</code> image (~50 MB, one-time only).
-            </span>
+        <!-- Two-column: terminal + stack status -->
+        <div class="td-body">
+            <div>
+                <div class="td-session-bar">
+                    <span id="td-session" style="font-family:monospace;"></span>
+                    <span id="td-elapsed"></span>
+                </div>
+                <div id="xterm-container"></div>
+            </div>
+
+            <div class="stack-panel">
+                <div class="stack-panel-header">
+                    <div class="label">Live Stack</div>
+                    <button class="refresh-btn" onclick="refreshContainers()">&#x21BA; Refresh</button>
+                </div>
+                <div id="stack-list">
+                    <div class="stack-empty">Stack not running</div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -342,14 +428,14 @@ Click &#x25B6; Start Test Drive to launch your configured stack and watch live D
         </div>
         <div class="phase-item">
             <span class="badge done">DONE</span>
-            <span>Phase 2 — Dockerfile &amp; Compose Generator Logic</span>
+            <span>Phase 2 — Dockerfile &amp; Compose Generator</span>
         </div>
         <div class="phase-item">
             <span class="badge done">DONE</span>
             <span>Phase 3 — Docker Engine &amp; WebSocket Streaming</span>
         </div>
         <div class="phase-item">
-            <span class="badge pending">NEXT</span>
+            <span class="badge active-phase">NOW</span>
             <span>Phase 4 — Showroom UI &amp; xterm.js Terminal</span>
         </div>
     </div>
@@ -357,7 +443,90 @@ Click &#x25B6; Start Test Drive to launch your configured stack and watch live D
     <script src="/socket.io/socket.io.js"></script>
     <script>
         // ============================================================
-        // WebSocket connection
+        // xterm.js (Phase 4)
+        // ============================================================
+        const term = new Terminal({
+            theme: {
+                background:   '#010409',
+                foreground:   '#c9d1d9',
+                cursor:       '#58a6ff',
+                cursorAccent: '#010409',
+                black:        '#0d1117',
+                red:          '#f85149',
+                green:        '#3fb950',
+                yellow:       '#d29922',
+                blue:         '#58a6ff',
+                magenta:      '#bc8cff',
+                cyan:         '#39c5cf',
+                white:        '#c9d1d9',
+                brightBlack:  '#484f58',
+                brightGreen:  '#56d364',
+                brightRed:    '#ffa198',
+                brightWhite:  '#e6edf3',
+            },
+            fontFamily: "'Courier New', Courier, monospace",
+            fontSize: 13,
+            lineHeight: 1.5,
+            scrollback: 5000,
+            convertEol: true,
+            cursorBlink: true,
+        });
+
+        const fitAddon = new FitAddon.FitAddon();
+        term.loadAddon(fitAddon);
+        term.open(document.getElementById('xterm-container'));
+        fitAddon.fit();
+
+        window.addEventListener('resize', () => fitAddon.fit());
+
+        // Welcome banner
+        term.writeln('\x1b[36m╔══════════════════════════════════════════╗\x1b[0m');
+        term.writeln('\x1b[36m║  \x1b[1m\x1b[34m Docker Garage \x1b[0m\x1b[36m— Test Drive Terminal   ║\x1b[0m');
+        term.writeln('\x1b[36m╚══════════════════════════════════════════╝\x1b[0m');
+        term.writeln('');
+        term.writeln('\x1b[90mPress \x1b[37mStart Test Drive\x1b[90m to launch your stack.\x1b[0m');
+        term.writeln('\x1b[90mUse \x1b[37mPre-flight Check\x1b[90m to verify images and ports first.\x1b[0m');
+        term.writeln('');
+
+        // ANSI color codes per log level
+        const ANSI = {
+            info:    '\x1b[0m',
+            success: '\x1b[32m',
+            error:   '\x1b[91m',
+            system:  '\x1b[36m',
+        };
+
+        function appendTerminalLine(text, level = 'info') {
+            term.writeln((ANSI[level] || ANSI.info) + (text || '') + '\x1b[0m');
+        }
+
+        function clearTerminal() {
+            term.clear();
+        }
+
+        // ============================================================
+        // Elapsed timer
+        // ============================================================
+        let elapsedInterval = null;
+        let elapsedStart    = null;
+
+        function startElapsedTimer() {
+            elapsedStart = Date.now();
+            const el = document.getElementById('td-elapsed');
+            elapsedInterval = setInterval(() => {
+                const s = Math.floor((Date.now() - elapsedStart) / 1000);
+                const m = Math.floor(s / 60);
+                el.textContent = m > 0 ? `${m}m ${s % 60}s` : `${s}s`;
+            }, 1000);
+        }
+
+        function stopElapsedTimer() {
+            clearInterval(elapsedInterval);
+            elapsedInterval = null;
+        }
+
+        // ============================================================
+        // WebSocket
         // ============================================================
         const socket = io();
 
@@ -371,45 +540,52 @@ Click &#x25B6; Start Test Drive to launch your configured stack and watch live D
             document.getElementById('socket-status').textContent = 'WebSocket disconnected';
         });
 
-        // ---- Phase 3: live log events from the Test Drive engine ----
         socket.on('testdrive:log', ({ line, level }) => {
             appendTerminalLine(line, level);
         });
 
         socket.on('testdrive:done', ({ success, projectName, exitCode }) => {
+            stopElapsedTimer();
             document.getElementById('td-start-btn').disabled = false;
-            document.getElementById('td-stop-btn').disabled = true;
+            document.getElementById('td-stop-btn').disabled  = true;
             if (success) {
                 appendTerminalLine('', 'info');
                 appendTerminalLine('✅  Stack "' + projectName + '" is live on the host!', 'success');
                 appendTerminalLine('    Run: docker ps   on your host to see it.', 'success');
+                setTimeout(() => refreshContainers(), 800);
             } else {
                 appendTerminalLine('❌  Compose exited with code ' + exitCode, 'error');
             }
         });
 
         socket.on('testdrive:stopped', ({ projectName }) => {
+            stopElapsedTimer();
             appendTerminalLine('✅  Stack "' + projectName + '" stopped.', 'success');
             document.getElementById('td-start-btn').disabled = false;
-            document.getElementById('td-stop-btn').disabled = true;
+            document.getElementById('td-stop-btn').disabled  = true;
+            setTimeout(() => refreshContainers(), 500);
+        });
+
+        socket.on('containers:list', ({ containers }) => {
+            renderStackPanel(containers || []);
         });
 
         // ============================================================
-        // Health + generator probe on page load
+        // Health + generator probe on load
         // ============================================================
         fetch('/api/health')
             .then(r => r.json())
             .then(data => {
                 document.getElementById('api-status').textContent = 'OK';
-                document.getElementById('api-status').className = 'value ok';
+                document.getElementById('api-status').className   = 'value ok';
                 document.getElementById('docker-version').textContent = data.docker.version;
-                document.getElementById('docker-os').textContent = data.docker.os;
+                document.getElementById('docker-os').textContent      = data.docker.os;
                 document.getElementById('docker-containers').textContent =
                     data.docker.runningContainers + ' running / ' + data.docker.totalContainers + ' total';
             })
             .catch(() => {
                 document.getElementById('api-status').textContent = 'Error';
-                document.getElementById('api-status').className = 'value error';
+                document.getElementById('api-status').className   = 'value error';
             });
 
         fetch('/api/generate', {
@@ -419,11 +595,11 @@ Click &#x25B6; Start Test Drive to launch your configured stack and watch live D
         }).then(r => {
             if (r.ok) {
                 document.getElementById('gen-status').textContent = 'OK — /api/generate ready';
-                document.getElementById('gen-status').className = 'value ok';
+                document.getElementById('gen-status').className   = 'value ok';
             } else { throw new Error(); }
         }).catch(() => {
             document.getElementById('gen-status').textContent = 'Not available (restart container?)';
-            document.getElementById('gen-status').className = 'value error';
+            document.getElementById('gen-status').className   = 'value error';
         });
 
         // ============================================================
@@ -437,20 +613,19 @@ Click &#x25B6; Start Test Drive to launch your configured stack and watch live D
         });
 
         function syncNginxPill() {
-            const nginxPill = document.getElementById('pill-nginx');
+            const p = document.getElementById('pill-nginx');
             if (document.getElementById('base').value === 'nginx') {
-                nginxPill.classList.add('disabled');
-                nginxPill.classList.remove('active');
-                nginxPill.title = 'Nginx is already your base runtime';
+                p.classList.add('disabled');
+                p.classList.remove('active');
+                p.title = 'Nginx is already your base runtime';
             } else {
-                nginxPill.classList.remove('disabled');
-                nginxPill.title = '';
+                p.classList.remove('disabled');
+                p.title = '';
             }
         }
         document.getElementById('base').addEventListener('change', syncNginxPill);
         syncNginxPill();
 
-        // Update the version field default/placeholder when the base changes
         const VERSION_DEFAULTS = {
             node:   { value: '20',     placeholder: 'e.g. 20, 18, 22' },
             python: { value: '3.12',   placeholder: 'e.g. 3.12, 3.11' },
@@ -460,18 +635,17 @@ Click &#x25B6; Start Test Drive to launch your configured stack and watch live D
             ubuntu: { value: '24.04',  placeholder: 'e.g. 24.04, 22.04, 20.04' },
         };
         function syncVersionField() {
-            const base    = document.getElementById('base').value;
-            const vInput  = document.getElementById('version');
-            const def     = VERSION_DEFAULTS[base] || { value: 'latest', placeholder: 'e.g. latest' };
-            vInput.value       = def.value;
-            vInput.placeholder = def.placeholder;
+            const base  = document.getElementById('base').value;
+            const input = document.getElementById('version');
+            const def   = VERSION_DEFAULTS[base] || { value: 'latest', placeholder: 'e.g. latest' };
+            input.value       = def.value;
+            input.placeholder = def.placeholder;
         }
         document.getElementById('base').addEventListener('change', syncVersionField);
         syncVersionField();
 
         // ============================================================
         // Shared: read current config from the form
-        // Used by both the generator preview AND the Test Drive
         // ============================================================
         function getCurrentConfig() {
             return {
@@ -490,7 +664,7 @@ Click &#x25B6; Start Test Drive to launch your configured stack and watch live D
         }
 
         // ============================================================
-        // Phase 2: Generate preview
+        // Generator preview
         // ============================================================
         function switchTab(tab, btn) {
             document.querySelectorAll('.output-box').forEach(el => el.classList.remove('active'));
@@ -505,7 +679,7 @@ Click &#x25B6; Start Test Drive to launch your configured stack and watch live D
 
         async function runGenerator() {
             const btn = document.getElementById('gen-btn');
-            btn.disabled = true;
+            btn.disabled    = true;
             btn.textContent = 'Generating…';
 
             try {
@@ -529,7 +703,7 @@ Click &#x25B6; Start Test Drive to launch your configured stack and watch live D
                 setOutput('compose',    '# Network error: ' + err.message);
             }
 
-            btn.disabled = false;
+            btn.disabled    = false;
             btn.textContent = 'Generate Dockerfile & docker-compose.yml';
         }
 
@@ -538,9 +712,13 @@ Click &#x25B6; Start Test Drive to launch your configured stack and watch live D
             box.innerHTML = '';
             if (showCopy) {
                 const btn = document.createElement('button');
-                btn.className = 'copy-btn';
+                btn.className   = 'copy-btn';
                 btn.textContent = 'Copy';
-                btn.onclick = () => { copyText(text); btn.textContent = 'Copied!'; setTimeout(() => btn.textContent = 'Copy', 1500); };
+                btn.onclick = () => {
+                    copyText(text);
+                    btn.textContent = 'Copied!';
+                    setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+                };
                 box.appendChild(btn);
             }
             const pre = document.createElement('span');
@@ -549,33 +727,12 @@ Click &#x25B6; Start Test Drive to launch your configured stack and watch live D
         }
 
         // ============================================================
-        // Phase 3: Test Drive
+        // Pre-flight check
         // ============================================================
-        let currentSessionId = null;
-
-        const TERM_COLORS = {
-            info:    '#c9d1d9',
-            success: '#3fb950',
-            error:   '#f85149',
-            system:  '#58a6ff',
-        };
-
-        function appendTerminalLine(text, level = 'info') {
-            const terminal = document.getElementById('terminal');
-            const placeholder = document.getElementById('td-placeholder');
-            if (placeholder) placeholder.remove();
-
-            const div = document.createElement('div');
-            div.style.color = TERM_COLORS[level] || TERM_COLORS.info;
-            div.textContent = text || ' '; // non-breaking space for blank lines
-            terminal.appendChild(div);
-            terminal.scrollTop = terminal.scrollHeight;
-        }
-
         async function runPreflight() {
             const btn = document.getElementById('td-check-btn');
             btn.textContent = '⏳ Checking…';
-            btn.disabled = true;
+            btn.disabled    = true;
 
             const panel   = document.getElementById('preflight-panel');
             const imgDiv  = document.getElementById('preflight-images');
@@ -586,13 +743,12 @@ Click &#x25B6; Start Test Drive to launch your configured stack and watch live D
 
             try {
                 const res  = await fetch('/api/preflight', {
-                    method: 'POST',
+                    method:  'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(getCurrentConfig()),
+                    body:    JSON.stringify(getCurrentConfig()),
                 });
                 const data = await res.json();
 
-                // ---- Images ----
                 const imgLines = data.images.map(({ label, image, cached }) => {
                     const icon  = cached ? '✅' : '📥';
                     const color = cached ? '#3fb950' : '#d29922';
@@ -601,7 +757,6 @@ Click &#x25B6; Start Test Drive to launch your configured stack and watch live D
                 });
                 imgDiv.innerHTML = '<div style="color:#8b949e;margin-bottom:4px;font-size:0.72rem;text-transform:uppercase;letter-spacing:.05em;">Images</div>' + imgLines.join('');
 
-                // ---- Ports ----
                 const portLines = data.ports.map(({ label, port, available }) => {
                     const icon  = available ? '✅' : '⛔';
                     const color = available ? '#3fb950' : '#f85149';
@@ -615,8 +770,13 @@ Click &#x25B6; Start Test Drive to launch your configured stack and watch live D
             }
 
             btn.textContent = '🔍 Pre-flight Check';
-            btn.disabled = false;
+            btn.disabled    = false;
         }
+
+        // ============================================================
+        // Test Drive
+        // ============================================================
+        let currentSessionId = null;
 
         async function startTestDrive() {
             if (!socket.connected) {
@@ -624,32 +784,32 @@ Click &#x25B6; Start Test Drive to launch your configured stack and watch live D
                 return;
             }
 
-            const config = getCurrentConfig();
-
-            // Clear terminal
-            const terminal = document.getElementById('terminal');
-            terminal.innerHTML = '';
-
-            document.getElementById('td-start-btn').disabled = true;
-            document.getElementById('td-stop-btn').disabled = false;
+            clearTerminal();
+            stopElapsedTimer();
+            document.getElementById('td-elapsed').textContent = '';
             document.getElementById('td-session').textContent = 'Starting…';
+            document.getElementById('td-start-btn').disabled  = true;
+            document.getElementById('td-stop-btn').disabled   = false;
+            startElapsedTimer();
 
             try {
                 const res  = await fetch('/api/testdrive/start', {
-                    method: 'POST',
+                    method:  'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ config, socketId: socket.id })
+                    body:    JSON.stringify({ config: getCurrentConfig(), socketId: socket.id })
                 });
                 const data = await res.json();
 
                 if (!res.ok) {
+                    stopElapsedTimer();
                     appendTerminalLine('❌  ' + (data.error || 'Unknown error'), 'error');
                     if (data.message) appendTerminalLine('   ' + data.message, 'error');
                     if (data.code)    appendTerminalLine('   Error code: ' + data.code, 'error');
                     if (data.hint)    appendTerminalLine('💡  ' + data.hint, 'system');
                     if (data.details) data.details.forEach(d => appendTerminalLine('   ' + d, 'error'));
-                    document.getElementById('td-start-btn').disabled = false;
-                    document.getElementById('td-stop-btn').disabled = true;
+                    document.getElementById('td-start-btn').disabled  = false;
+                    document.getElementById('td-stop-btn').disabled   = true;
+                    document.getElementById('td-session').textContent = '';
                     return;
                 }
 
@@ -658,9 +818,11 @@ Click &#x25B6; Start Test Drive to launch your configured stack and watch live D
                     'session: ' + data.sessionId.slice(0, 8) + '…';
 
             } catch (err) {
+                stopElapsedTimer();
                 appendTerminalLine('Network error: ' + err.message, 'error');
-                document.getElementById('td-start-btn').disabled = false;
-                document.getElementById('td-stop-btn').disabled = true;
+                document.getElementById('td-start-btn').disabled  = false;
+                document.getElementById('td-stop-btn').disabled   = true;
+                document.getElementById('td-session').textContent = '';
             }
         }
 
@@ -670,11 +832,51 @@ Click &#x25B6; Start Test Drive to launch your configured stack and watch live D
             appendTerminalLine('Sending stop signal…', 'system');
 
             await fetch('/api/testdrive/stop', {
-                method: 'POST',
+                method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sessionId: currentSessionId, socketId: socket.id })
+                body:    JSON.stringify({ sessionId: currentSessionId, socketId: socket.id })
             }).catch(err => appendTerminalLine('Stop request failed: ' + err.message, 'error'));
         }
+
+        // ============================================================
+        // Container status panel (Phase 4)
+        // ============================================================
+        function refreshContainers() {
+            socket.emit('containers:refresh');
+        }
+
+        function renderStackPanel(containers) {
+            const el = document.getElementById('stack-list');
+
+            if (!containers.length) {
+                el.innerHTML = '<div class="stack-empty">Stack not running</div>';
+                return;
+            }
+
+            el.innerHTML = containers.map(c => {
+                const name  = (c.Names?.[0] || '').replace(/^\//, '') || '—';
+                const image = c.Image || '—';
+                const state = (c.State || '').toLowerCase();
+                const ports = (c.Ports || [])
+                    .filter(p => p.PublicPort)
+                    .map(p => `${p.PublicPort}→${p.PrivatePort}`)
+                    .join(' ');
+
+                const cls = state === 'running' ? 'running' : state === 'exited' ? 'exited' : 'other';
+
+                return `<div class="container-item">
+                    <div class="c-name" title="${name}">${name}</div>
+                    <div class="c-image" title="${image}">${image}</div>
+                    <div class="c-meta">
+                        <span class="s-badge ${cls}"><span class="s-dot"></span>${state}</span>
+                        ${ports ? `<span class="c-ports">${ports}</span>` : ''}
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        // Load container list on page open
+        refreshContainers();
     </script>
 </body>
 </html>

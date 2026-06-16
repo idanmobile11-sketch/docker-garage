@@ -10,3 +10,6 @@ generated/
 
 # Runtime log (written by logger.js — lives in /tmp/docker-garage on the host)
 docker-garage.log
+
+# Local dev notes (not for the repo)
+DEVLOG.md

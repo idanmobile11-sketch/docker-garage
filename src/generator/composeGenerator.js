@@ -67,8 +67,9 @@ function toYaml(value, depth = 0) {
   if (typeof value === 'object' && value !== null) {
     return Object.entries(value).map(([k, v]) => {
       if (k === 'test' && Array.isArray(v)) {
-        // Healthcheck test uses YAML flow sequence with double-quoted items
-        const items = v.map((s) => `"${s}"`).join(', ');
+        // Healthcheck test: flow sequence with double-quoted items.
+        // Escape backslashes first, then double quotes, so inner " don't break YAML.
+        const items = v.map((s) => `"${s.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`).join(', ');
         return `${pad}${k}: [${items}]`;
       }
       if (Array.isArray(v)) {
