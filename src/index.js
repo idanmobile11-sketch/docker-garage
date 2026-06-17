@@ -8,11 +8,13 @@
 //   4. dockerEngine   : Phase 3 — compose execution + log streaming
 // =============================================================================
 
-const express = require('express');
-const http    = require('http');
+const express   = require('express');
+const http      = require('http');
 const { Server } = require('socket.io');
-const path    = require('path');
-const log     = require('./logger');
+const path      = require('path');
+const rateLimit = require('express-rate-limit');
+const basicAuth = require('express-basic-auth');
+const log       = require('./logger');
 
 // --- Route modules ---
 const generateRoute             = require('./routes/generate');
@@ -43,7 +45,31 @@ setTestdriveIo(io);
 // 3. Express middleware
 // =============================================================================
 app.use(express.json());
+
+// Basic auth — only enforced when AUTH_PASS is set (skipped in local dev)
+if (process.env.AUTH_PASS) {
+  app.use(basicAuth({
+    users: { [process.env.AUTH_USER || 'admin']: process.env.AUTH_PASS },
+    challenge: true,
+    realm: 'Docker Garage',
+  }));
+}
+
+// Serve vendored frontend deps from node_modules (avoids CDN dependency)
+const nm = path.join(__dirname, '..', 'node_modules');
+app.use('/vendor/xterm',          express.static(path.join(nm, 'xterm')));
+app.use('/vendor/xterm-addon-fit', express.static(path.join(nm, 'xterm-addon-fit')));
+app.use('/vendor/jszip',          express.static(path.join(nm, 'jszip')));
+
 app.use(express.static(path.join(__dirname, '..', 'public')));
+
+const testDriveLimit = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests — try again in a minute.' },
+});
 
 // =============================================================================
 // 4. REST API routes
@@ -53,7 +79,7 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 app.use('/api', generateRoute);
 
 // Phase 3 — POST /api/testdrive/start  |  POST /api/testdrive/stop
-app.use('/api/testdrive', testdriveRoute);
+app.use('/api/testdrive', testDriveLimit, testdriveRoute);
 
 // Pre-flight checks — POST /api/preflight
 app.use('/api/preflight', preflightRoute);

@@ -1,6 +1,9 @@
 node_modules/
 .env
 .env.*
+
+# TLS certificates — never commit private keys
+nginx/certs/
 npm-debug.log*
 .DS_Store
 Thumbs.db
