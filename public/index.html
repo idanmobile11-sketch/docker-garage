@@ -10,6 +10,9 @@
     <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
 
+    <!-- JSZip — client-side ZIP builder (Phase 5) -->
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -116,7 +119,7 @@
             background: #0d1117; border: 1px solid #30363d; border-top: none;
             border-radius: 0 0 6px 6px; padding: 16px;
             font-size: 0.78rem; line-height: 1.6; white-space: pre; overflow-x: auto;
-            color: #3fb950; min-height: 120px; max-height: 360px; overflow-y: auto;
+            color: #e6edf3; min-height: 120px; max-height: 360px; overflow-y: auto;
             display: none;
         }
         .output-box.active { display: block; }
@@ -207,6 +210,113 @@
         .s-badge.running .s-dot { animation: pulse 1.5s infinite; }
 
         .stack-empty { color: #484f58; font-style: italic; font-size: 0.78rem; padding: 10px 0; }
+
+        /* ---- Network Topology Cards (Phase 5) ---- */
+        .topo-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        @media (max-width: 640px) { .topo-grid { grid-template-columns: 1fr; } }
+
+        /* Each card gets a unique top-accent stripe by data attribute */
+        .topo-card {
+            background: #0d1117;
+            border: 2px solid #21262d;
+            border-top: 4px solid #30363d;
+            border-radius: 10px;
+            padding: 16px 14px;
+            cursor: pointer;
+            transition: border-color 0.15s, background 0.15s;
+            user-select: none;
+            position: relative;
+        }
+        .topo-card[data-topo="flat"]      { border-top-color: #6e7681; }
+        .topo-card[data-topo="segmented"] { border-top-color: #388bfd; }
+        .topo-card[data-topo="full"]      { border-top-color: #d29922; }
+
+        .topo-card:hover                        { border-color: #484f58; }
+        .topo-card[data-topo="flat"]:hover      { border-top-color: #6e7681; }
+        .topo-card[data-topo="segmented"]:hover { border-top-color: #388bfd; }
+        .topo-card[data-topo="full"]:hover      { border-top-color: #d29922; }
+
+        .topo-card.active                        { border: 2px solid #58a6ff; border-top-width: 4px; background: #0c1929; }
+        .topo-card.active[data-topo="flat"]      { border-top-color: #6e7681; }
+        .topo-card.active[data-topo="segmented"] { border-top-color: #388bfd; }
+        .topo-card.active[data-topo="full"]      { border-top-color: #d29922; }
+
+        /* Checkmark shown only on active card */
+        .topo-check {
+            position: absolute;
+            top: 10px; right: 10px;
+            width: 22px; height: 22px;
+            border-radius: 50%;
+            background: #58a6ff;
+            color: #010409;
+            font-size: 0.8rem;
+            font-weight: bold;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        .topo-card.active .topo-check { display: flex; }
+
+        .topo-title {
+            font-size: 1.05rem;
+            font-weight: bold;
+            color: #c9d1d9;
+            margin-bottom: 14px;
+            text-align: center;
+            padding-right: 26px;
+        }
+        .topo-card.active .topo-title { color: #58a6ff; }
+
+        .topo-diagram {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            margin-bottom: 14px;
+        }
+
+        .topo-net {
+            border-radius: 6px;
+            padding: 9px 12px;
+            font-size: 0.86rem;
+            line-height: 1.65;
+        }
+        .net-name {
+            display: block;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            margin-bottom: 4px;
+            font-weight: bold;
+            opacity: 0.8;
+        }
+        .flat-net { background: #161b22; border: 2px solid #6e7681; color: #adbac7; }
+        .web-net  { background: #0d1f3c; border: 2px solid #388bfd; color: #79c0ff; }
+        .int-net  { background: #0f2010; border: 2px solid #3fb950; color: #7ee787; }
+        .app-net  { background: #0f2010; border: 2px solid #3fb950; color: #7ee787; }
+        .db-net   { background: #1f1700; border: 2px solid #d29922; color: #f0b72f; }
+
+        .topo-bridge {
+            text-align: center;
+            color: #6e7681;
+            font-size: 0.76rem;
+            padding: 2px 0;
+            letter-spacing: 0.03em;
+        }
+
+        .topo-desc {
+            font-size: 0.82rem;
+            color: #6e7681;
+            text-align: center;
+            line-height: 1.55;
+            border-top: 1px solid #21262d;
+            padding-top: 12px;
+        }
+        .topo-card.active .topo-desc { color: #8b949e; }
     </style>
 </head>
 <body>
@@ -322,6 +432,75 @@
             </div>
         </div>
 
+        <div class="label" style="margin-top:16px;">Network Topology</div>
+        <div class="topo-grid">
+
+            <!-- FLAT -->
+            <div class="topo-card active" data-topo="flat" onclick="selectTopology(this)">
+                <div class="topo-check">&#x2713;</div>
+                <div class="topo-title">Flat</div>
+                <div class="topo-diagram">
+                    <div class="topo-net flat-net">
+                        <span class="net-name">One shared network</span>
+                        app &middot; nginx &middot; redis<br>
+                        postgres &middot; all services
+                    </div>
+                </div>
+                <div class="topo-desc">
+                    Every container can talk to every other container.
+                    Best for simple local dev.
+                </div>
+            </div>
+
+            <!-- WEB + BACKEND -->
+            <div class="topo-card" data-topo="segmented" onclick="selectTopology(this)">
+                <div class="topo-check">&#x2713;</div>
+                <div class="topo-title">Web + Backend</div>
+                <div class="topo-diagram">
+                    <div class="topo-net web-net">
+                        <span class="net-name">Web layer (public)</span>
+                        nginx &middot; <b>your app</b>
+                    </div>
+                    <div class="topo-bridge">&#x25BC; your app bridges &#x25B2;</div>
+                    <div class="topo-net int-net">
+                        <span class="net-name">Backend layer (private)</span>
+                        <b>your app</b> &middot; redis &middot; postgres
+                    </div>
+                </div>
+                <div class="topo-desc">
+                    Nginx can&rsquo;t reach the database directly &mdash;
+                    only your app can.
+                </div>
+            </div>
+
+            <!-- WEB / APP / DB -->
+            <div class="topo-card" data-topo="full" onclick="selectTopology(this)">
+                <div class="topo-check">&#x2713;</div>
+                <div class="topo-title">Web / App / DB</div>
+                <div class="topo-diagram">
+                    <div class="topo-net web-net">
+                        <span class="net-name">Web layer (public)</span>
+                        nginx &middot; <b>your app</b>
+                    </div>
+                    <div class="topo-bridge">&#x25BC; your app bridges &#x25B2;</div>
+                    <div class="topo-net app-net">
+                        <span class="net-name">App layer (internal)</span>
+                        <b>your app</b> &middot; redis &middot; rabbit
+                    </div>
+                    <div class="topo-bridge">&#x25BC; your app bridges &#x25B2;</div>
+                    <div class="topo-net db-net">
+                        <span class="net-name">DB layer (most isolated)</span>
+                        <b>your app</b> &middot; postgres &middot; mysql
+                    </div>
+                </div>
+                <div class="topo-desc">
+                    Database is fully isolated &mdash; nothing can reach it
+                    except your app.
+                </div>
+            </div>
+
+        </div>
+
         <div class="checkboxes">
             <label><input type="checkbox" id="opt-nonroot" checked /> Non-root user</label>
             <label><input type="checkbox" id="opt-volumes" checked /> Named volumes</label>
@@ -335,9 +514,18 @@
             </label>
         </div>
 
-        <button class="gen-btn" id="gen-btn" onclick="runGenerator()">
-            Generate Dockerfile &amp; docker-compose.yml
-        </button>
+        <div style="display:flex;gap:8px;align-items:stretch;">
+            <button class="gen-btn" id="gen-btn" onclick="runGenerator()" style="flex:1;">
+                Generate Dockerfile &amp; docker-compose.yml
+            </button>
+            <button class="gen-btn" id="dl-btn"
+                style="width:auto;padding:10px 20px;background:#1a3a5c;white-space:nowrap;"
+                onmouseenter="this.style.background='#1e4a75'"
+                onmouseleave="this.style.background='#1a3a5c'"
+                onclick="downloadZip()">
+                &#x2B07; Download ZIP
+            </button>
+        </div>
 
         <div style="margin-top:16px;">
             <div class="tabs">
@@ -350,6 +538,20 @@
             <div id="out-compose" class="output-box">
                 <span class="output-placeholder">Click "Generate" to see your docker-compose.yml here.</span>
             </div>
+        </div>
+
+        <!-- ===== Saved Presets (Phase 5) ===== -->
+        <div style="margin-top:18px;border-top:1px solid #21262d;padding-top:14px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                <div class="label" style="margin-bottom:0;">Saved Presets</div>
+                <button onclick="savePreset()"
+                    style="padding:3px 12px;font-size:0.72rem;background:#0d1117;border:1px solid #30363d;color:#8b949e;border-radius:4px;cursor:pointer;font-family:inherit;transition:all 0.1s;"
+                    onmouseenter="this.style.color='#c9d1d9';this.style.borderColor='#8b949e'"
+                    onmouseleave="this.style.color='#8b949e';this.style.borderColor='#30363d'">
+                    &#x2B; Save Current
+                </button>
+            </div>
+            <div id="preset-list"></div>
         </div>
     </div>
 
@@ -442,8 +644,12 @@
             <span>Phase 3 — Docker Engine &amp; WebSocket Streaming</span>
         </div>
         <div class="phase-item">
-            <span class="badge active-phase">NOW</span>
+            <span class="badge done">DONE</span>
             <span>Phase 4 — Showroom UI &amp; xterm.js Terminal</span>
+        </div>
+        <div class="phase-item">
+            <span class="badge active-phase">NOW</span>
+            <span>Phase 5 — Export ZIP &amp; Saved Presets</span>
         </div>
     </div>
 
@@ -656,18 +862,24 @@
         // ============================================================
         function getCurrentConfig() {
             return {
-                appName:       document.getElementById('appName').value.trim() || 'my-app',
-                base:          document.getElementById('base').value,
-                version:       document.getElementById('version').value.trim() || undefined,
-                port:          parseInt(document.getElementById('port').value) || 3000,
-                services:      [...document.querySelectorAll('.pill.active')].map(p => p.dataset.service),
-                networkDriver: document.getElementById('networkDriver').value,
+                appName:         document.getElementById('appName').value.trim() || 'my-app',
+                base:            document.getElementById('base').value,
+                version:         document.getElementById('version').value.trim() || undefined,
+                port:            parseInt(document.getElementById('port').value) || 3000,
+                services:        [...document.querySelectorAll('.pill.active')].map(p => p.dataset.service),
+                networkDriver:   document.getElementById('networkDriver').value,
+                networkTopology: document.querySelector('.topo-card.active')?.dataset.topo || 'flat',
                 options: {
                     nonRootUser:  document.getElementById('opt-nonroot').checked,
                     namedVolumes: document.getElementById('opt-volumes').checked,
                     healthcheck:  document.getElementById('opt-healthcheck').checked,
                 }
             };
+        }
+
+        function selectTopology(card) {
+            document.querySelectorAll('.topo-card').forEach(c => c.classList.remove('active'));
+            card.classList.add('active');
         }
 
         // ============================================================
@@ -914,6 +1126,230 @@
 
         // Load container list on page open
         refreshContainers();
+
+        // ============================================================
+        // Phase 5 — Download ZIP
+        // ============================================================
+
+        async function downloadZip() {
+            const btn = document.getElementById('dl-btn');
+            btn.disabled    = true;
+            btn.textContent = '⏳ Generating…';
+
+            try {
+                const config = getCurrentConfig();
+
+                const res = await fetch('/api/generate', {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify(config),
+                });
+
+                if (!res.ok) {
+                    const d = await res.json().catch(() => ({}));
+                    alert('Generation failed: ' + (d.details ? d.details.join('\n') : (d.error || res.statusText)));
+                    return;
+                }
+
+                const { dockerfile, compose } = await res.json();
+
+                // Update the preview tabs with the freshly generated content
+                setOutput('dockerfile', dockerfile, true);
+                setOutput('compose',    compose,    true);
+
+                // Extract ${VAR:-default} patterns from compose → .env.example
+                const envLines = ['# .env.example — copy to .env and customize', '# Generated by Docker Garage', ''];
+                const seen = new Set();
+                for (const [, name, def] of compose.matchAll(/\$\{([A-Z_][A-Z0-9_]*):-([^}]*)\}/g)) {
+                    if (!seen.has(name)) { envLines.push(`${name}=${def}`); seen.add(name); }
+                }
+                const envExample = envLines.join('\n');
+
+                // Auto-generate a README
+                const svcList = config.services.length ? config.services.join(', ') : 'none';
+                const readme  = [
+                    `# ${config.appName}`,
+                    '',
+                    'Generated by [Docker Garage](https://github.com/idanmobile11-sketch/docker-garage).',
+                    '',
+                    '## Stack',
+                    `| Key | Value |`,
+                    `|-----|-------|`,
+                    `| Base runtime | \`${config.base}:${config.version || 'latest'}\` |`,
+                    `| App port | ${config.port} |`,
+                    `| Services | ${svcList} |`,
+                    `| Network | ${config.networkDriver} |`,
+                    '',
+                    '## Quick Start',
+                    '',
+                    '```bash',
+                    '# (Optional) customise environment variables',
+                    'cp .env.example .env',
+                    '',
+                    '# Start the full stack',
+                    'docker compose up -d --build',
+                    '',
+                    `# Your app will be at:  http://localhost:${config.port}`,
+                    '',
+                    '# Tear it all down',
+                    'docker compose down',
+                    '```',
+                    '',
+                    '## Files',
+                    '',
+                    '| File | Description |',
+                    '|------|-------------|',
+                    '| `Dockerfile` | Builds your application image |',
+                    '| `docker-compose.yml` | Orchestrates the full stack |',
+                    '| `.env.example` | Template for environment variables |',
+                    '',
+                    '---',
+                    '_Generated by Docker Garage_',
+                ].join('\n');
+
+                // Pack into ZIP and trigger browser download
+                const zip  = new JSZip();
+                zip.file('Dockerfile',          dockerfile);
+                zip.file('docker-compose.yml',  compose);
+                zip.file('.env.example',         envExample);
+                zip.file('README.md',            readme);
+
+                const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+                const url  = URL.createObjectURL(blob);
+                const a    = document.createElement('a');
+                a.href     = url;
+                a.download = `${config.appName}-docker.zip`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+            } catch (err) {
+                alert('Download failed: ' + err.message);
+            } finally {
+                btn.disabled    = false;
+                btn.innerHTML   = '&#x2B07; Download ZIP';
+            }
+        }
+
+        // ============================================================
+        // Phase 5 — Saved Presets (localStorage)
+        // ============================================================
+
+        const PRESETS_KEY = 'docker-garage:presets';
+
+        function escHtml(s) {
+            return String(s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function loadPresetsFromStorage() {
+            try { return JSON.parse(localStorage.getItem(PRESETS_KEY) || '[]'); }
+            catch { return []; }
+        }
+
+        function savePresetsToStorage(presets) {
+            localStorage.setItem(PRESETS_KEY, JSON.stringify(presets));
+        }
+
+        function savePreset() {
+            const name = prompt('Preset name (e.g. "Node + Postgres"):');
+            if (!name?.trim()) return;
+            const presets = loadPresetsFromStorage();
+            const idx = presets.findIndex(p => p.name === name.trim());
+            const preset = { name: name.trim(), config: getCurrentConfig(), savedAt: Date.now() };
+            if (idx >= 0) {
+                if (!confirm(`Overwrite existing preset "${name.trim()}"?`)) return;
+                presets[idx] = preset;
+            } else {
+                presets.push(preset);
+            }
+            savePresetsToStorage(presets);
+            renderPresets();
+        }
+
+        function loadPreset(idx) {
+            const preset = loadPresetsFromStorage()[idx];
+            if (!preset) return;
+            applyConfig(preset.config);
+        }
+
+        function deletePreset(idx) {
+            const presets = loadPresetsFromStorage();
+            const name = presets[idx]?.name || '';
+            if (!confirm(`Delete preset "${name}"?`)) return;
+            presets.splice(idx, 1);
+            savePresetsToStorage(presets);
+            renderPresets();
+        }
+
+        function applyConfig(config) {
+            document.getElementById('appName').value = config.appName || 'my-app';
+            document.getElementById('base').value    = config.base    || 'node';
+            document.getElementById('port').value    = config.port    || 3000;
+            document.getElementById('networkDriver').value = config.networkDriver || 'bridge';
+
+            // Update placeholder to match the base, then apply saved version
+            const vDef = VERSION_DEFAULTS[config.base] || { value: 'latest', placeholder: 'e.g. latest' };
+            document.getElementById('version').placeholder = vDef.placeholder;
+            document.getElementById('version').value       = config.version || vDef.value;
+
+            if (config.options) {
+                document.getElementById('opt-nonroot').checked   = config.options.nonRootUser  ?? true;
+                document.getElementById('opt-volumes').checked   = config.options.namedVolumes ?? true;
+                document.getElementById('opt-healthcheck').checked = config.options.healthcheck ?? true;
+            }
+
+            // Reset all pills then activate saved services
+            document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+            (config.services || []).forEach(s => {
+                const pill = document.querySelector(`.pill[data-service="${s}"]`);
+                if (pill && !pill.classList.contains('disabled')) pill.classList.add('active');
+            });
+
+            syncNginxPill();
+
+            // Restore network topology selection
+            document.querySelectorAll('.topo-card').forEach(c => c.classList.remove('active'));
+            const topoCard = document.querySelector(`.topo-card[data-topo="${config.networkTopology || 'flat'}"]`);
+            if (topoCard) topoCard.classList.add('active');
+        }
+
+        function renderPresets() {
+            const presets = loadPresetsFromStorage();
+            const el = document.getElementById('preset-list');
+
+            if (!presets.length) {
+                el.innerHTML = '<span style="color:#484f58;font-style:italic;font-size:0.78rem;">No saved presets yet. Configure a stack and click "+ Save Current".</span>';
+                return;
+            }
+
+            el.innerHTML = presets.map((p, i) => {
+                const date     = new Date(p.savedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+                const services = (p.config.services || []).join(', ') || 'no services';
+                const runtime  = `${escHtml(p.config.base || 'node')}:${escHtml(String(p.config.version || 'latest'))}`;
+                return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #21262d;">
+                    <div style="flex:1;min-width:0;">
+                        <div style="color:#c9d1d9;font-size:0.8rem;font-weight:600;">${escHtml(p.name)}</div>
+                        <div style="color:#484f58;font-size:0.68rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${runtime} &middot; ${escHtml(services)} &middot; ${date}</div>
+                    </div>
+                    <button onclick="loadPreset(${i})"
+                        style="padding:2px 10px;font-size:0.72rem;background:#1f3a6e;border:1px solid #58a6ff;color:#58a6ff;border-radius:4px;cursor:pointer;font-family:inherit;white-space:nowrap;">
+                        Load
+                    </button>
+                    <button onclick="deletePreset(${i})"
+                        style="padding:2px 8px;font-size:0.72rem;background:#21262d;border:1px solid #30363d;color:#8b949e;border-radius:4px;cursor:pointer;font-family:inherit;">
+                        &#x2715;
+                    </button>
+                </div>`;
+            }).join('');
+        }
+
+        // Render presets on load
+        renderPresets();
     </script>
 </body>
 </html>

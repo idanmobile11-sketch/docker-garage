@@ -37,12 +37,13 @@ const { generateCompose }    = require('../generator/composeGenerator');
 const router = Router();
 
 // ---- Constants ----
-const VALID_BASES    = ['node', 'python', 'golang', 'php', 'nginx', 'ubuntu'];
-const VALID_SERVICES = [
+const VALID_BASES      = ['node', 'python', 'golang', 'php', 'nginx', 'ubuntu'];
+const VALID_SERVICES   = [
   'redis', 'postgres', 'mysql', 'mongodb', 'nginx', 'rabbitmq',
   'elasticsearch', 'kibana', 'memcached', 'minio', 'mailpit', 'adminer',
 ];
-const VALID_NETWORKS = ['bridge', 'host'];
+const VALID_NETWORKS   = ['bridge', 'host'];
+const VALID_TOPOLOGIES = ['flat', 'segmented', 'full'];
 
 // Allowed characters for app names (Docker container name rules)
 const APP_NAME_REGEX = /^[a-z0-9][a-z0-9_-]{1,62}$/;
@@ -106,6 +107,11 @@ function validateConfig(body) {
     errors.push(`"networkDriver" must be one of: ${VALID_NETWORKS.join(', ')}.`);
   }
 
+  // networkTopology (optional)
+  if (body.networkTopology !== undefined && !VALID_TOPOLOGIES.includes(body.networkTopology)) {
+    errors.push(`"networkTopology" must be one of: ${VALID_TOPOLOGIES.join(', ')}.`);
+  }
+
   // options (optional object)
   if (body.options !== undefined) {
     if (typeof body.options !== 'object' || Array.isArray(body.options)) {
@@ -142,12 +148,13 @@ router.post('/generate', (req, res) => {
 
   // 2. Normalise (apply defaults)
   const config = {
-    appName:       body.appName,
-    base:          body.base,
-    version:       body.version || undefined,
-    port:          body.port ? Number(body.port) : undefined,
-    services:      body.services || [],
-    networkDriver: body.networkDriver || 'bridge',
+    appName:         body.appName,
+    base:            body.base,
+    version:         body.version || undefined,
+    port:            body.port ? Number(body.port) : undefined,
+    services:        body.services || [],
+    networkDriver:   body.networkDriver   || 'bridge',
+    networkTopology: body.networkTopology || 'flat',
     options: {
       nonRootUser:  body.options?.nonRootUser  ?? true,
       namedVolumes: body.options?.namedVolumes ?? true,

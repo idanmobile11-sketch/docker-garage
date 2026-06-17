@@ -18,6 +18,50 @@ const { SERVICE_TEMPLATES, SERVICE_VOLUMES } = require('./serviceTemplates');
 const DEFAULT_PORTS = { node: 3000, python: 8000, golang: 8080, php: 9000, nginx: 80, ubuntu: 8080 };
 
 // ---------------------------------------------------------------------------
+// Network topology helpers
+// ---------------------------------------------------------------------------
+
+// Services that belong in the DB tier (most sensitive — isolated in 'full' topology)
+const DB_TIER  = new Set(['postgres', 'mysql', 'mongodb', 'elasticsearch']);
+// Services that belong in the web tier (nginx as a reverse proxy)
+const WEB_TIER = new Set(['nginx']);
+// Everything else (redis, memcached, rabbitmq, mailpit, adminer, minio, kibana) → app tier
+
+/**
+ * Returns named network identifiers for a given topology.
+ * @param {string} appName
+ * @param {'flat'|'segmented'|'full'} topology
+ */
+function buildNetworkNames(appName, topology) {
+  switch (topology) {
+    case 'segmented': return { web: `${appName}_web`, internal: `${appName}_internal` };
+    case 'full':      return { web: `${appName}_web`, app: `${appName}_app`, db: `${appName}_db` };
+    default:          return { flat: `${appName}_network` };
+  }
+}
+
+/** Networks the app container itself joins (it bridges all tiers). */
+function buildAppNetworks(topology, nets) {
+  switch (topology) {
+    case 'segmented': return [nets.web, nets.internal];
+    case 'full':      return [nets.web, nets.app, nets.db];
+    default:          return [nets.flat];
+  }
+}
+
+/** Network(s) that an auxiliary service belongs to. */
+function buildServiceNetworks(serviceName, topology, nets) {
+  if (topology === 'flat')      return [nets.flat];
+  if (topology === 'segmented') return WEB_TIER.has(serviceName) ? [nets.web] : [nets.internal];
+  if (topology === 'full') {
+    if (WEB_TIER.has(serviceName)) return [nets.web];
+    if (DB_TIER.has(serviceName))  return [nets.db];
+    return [nets.app];
+  }
+  return [nets.flat];
+}
+
+// ---------------------------------------------------------------------------
 // Minimal YAML serialiser
 // ---------------------------------------------------------------------------
 // Rather than pulling in a yaml library, we build the string directly.
@@ -98,9 +142,8 @@ function toYaml(value, depth = 0) {
 // ---------------------------------------------------------------------------
 
 function buildAppService(config) {
-  const { appName, base, port, services = [], networkDriver, options = {} } = config;
+  const { appName, base, port, services = [], options = {}, _appNetworks } = config;
   const appPort = port || DEFAULT_PORTS[base] || 3000;
-  const networkName = `${appName}_network`;
 
   const serviceObj = {
     build: '.',
@@ -111,7 +154,7 @@ function buildAppService(config) {
       NODE_ENV: 'production',
       PORT: String(appPort),
     },
-    networks: [networkName],
+    networks: _appNetworks || [`${appName}_network`],
     restart: 'unless-stopped',
   };
 
@@ -164,10 +207,15 @@ function generateCompose(config) {
     appName = 'my-app',
     services = [],
     networkDriver = 'bridge',
+    networkTopology = 'flat',
     options = {},
   } = config;
 
-  const networkName = `${appName}_network`;
+  // host driver shares the host network stack — named networks don't apply
+  const topology = networkDriver === 'host' ? 'flat' : networkTopology;
+  const nets     = buildNetworkNames(appName, topology);
+  const appNets  = buildAppNetworks(topology, nets);
+
   const lines = [];
 
   // ---- Header ----
@@ -185,7 +233,7 @@ function generateCompose(config) {
   lines.push('');
   lines.push(`  # Your application container`);
   lines.push(`  ${appName}:`);
-  const appService = buildAppService(config);
+  const appService = buildAppService({ ...config, _appNetworks: appNets });
   lines.push(toYaml(appService, 2));
 
   // ---- Auxiliary services ----
@@ -193,15 +241,16 @@ function generateCompose(config) {
     const template = SERVICE_TEMPLATES[serviceName];
     if (!template) return;
 
+    const svcNets = buildServiceNetworks(serviceName, topology, nets);
+
     lines.push('');
     lines.push(`  # ${serviceName} — auxiliary service`);
     lines.push(`  ${serviceName}:`);
 
-    // Merge in network and managed label so the service can communicate with the app
     const serviceWithNetwork = {
       ...template,
       labels: { ...(template.labels || {}), 'com.docker-garage.managed': 'true' },
-      networks: [networkName],
+      networks: svcNets,
     };
 
     lines.push(toYaml(serviceWithNetwork, 2));
@@ -210,14 +259,35 @@ function generateCompose(config) {
   // ---- Networks block ----
   lines.push('');
   lines.push('# ---- Networks ----');
-  lines.push('# A dedicated network isolates this stack from other containers on the host.');
-  lines.push('networks:');
-  lines.push(`  ${networkName}:`);
+
   if (networkDriver === 'host') {
+    lines.push('# host driver: shares the host network stack directly.');
+    lines.push('# Port mappings ("ports:") are ignored in host mode.');
+    lines.push('networks:');
+    lines.push(`  ${nets.flat}:`);
     lines.push(`    driver: host`);
-    lines.push('    # NOTE: host network shares the host\'s network stack.');
-    lines.push('    # Port mappings ("ports:") are ignored when driver is host.');
-  } else {
+  } else if (topology === 'flat') {
+    lines.push('# Single shared network — all services can reach each other.');
+    lines.push('networks:');
+    lines.push(`  ${nets.flat}:`);
+    lines.push(`    driver: bridge`);
+  } else if (topology === 'segmented') {
+    lines.push('# Two-network topology: web-facing tier and internal tier.');
+    lines.push('# Your app bridges both. Nginx (if used) cannot reach the database directly.');
+    lines.push('networks:');
+    lines.push(`  ${nets.web}:    # web tier — nginx + app`);
+    lines.push(`    driver: bridge`);
+    lines.push(`  ${nets.internal}: # internal tier — app + all services`);
+    lines.push(`    driver: bridge`);
+  } else if (topology === 'full') {
+    lines.push('# Three-network topology: web / app / db tiers.');
+    lines.push('# Your app bridges all three. The database is reachable ONLY from your app.');
+    lines.push('networks:');
+    lines.push(`  ${nets.web}: # web tier — nginx + app`);
+    lines.push(`    driver: bridge`);
+    lines.push(`  ${nets.app}: # application tier — app + cache/queue/mail services`);
+    lines.push(`    driver: bridge`);
+    lines.push(`  ${nets.db}:  # data tier — app + database services only`);
     lines.push(`    driver: bridge`);
   }
 
