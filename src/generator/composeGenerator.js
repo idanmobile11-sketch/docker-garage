@@ -37,6 +37,10 @@ const DEFAULT_PORTS = { node: 3000, python: 8000, golang: 8080, php: 9000, nginx
  */
 function yamlStr(s) {
   if (typeof s !== 'string') return String(s);
+  // YAML 1.2 reserved literals — must be quoted when used as strings
+  if (/^(true|false|null|~|yes|no|on|off)$/i.test(s)) {
+    return `'${s}'`;
+  }
   // Characters that have special meaning in unquoted YAML scalars
   if (/[:#{}[\],&*?|<>=!%@`"'\r\n]/.test(s) || s.trim() === '') {
     return `'${s.replace(/'/g, "''")}'`; // escape inner single quotes by doubling
@@ -101,6 +105,7 @@ function buildAppService(config) {
   const serviceObj = {
     build: '.',
     container_name: appName,
+    labels: { 'com.docker-garage.managed': 'true' },
     ports: [`${appPort}:${appPort}`],
     environment: {
       NODE_ENV: 'production',
@@ -192,9 +197,10 @@ function generateCompose(config) {
     lines.push(`  # ${serviceName} — auxiliary service`);
     lines.push(`  ${serviceName}:`);
 
-    // Merge in network so the service can communicate with the app
+    // Merge in network and managed label so the service can communicate with the app
     const serviceWithNetwork = {
       ...template,
+      labels: { ...(template.labels || {}), 'com.docker-garage.managed': 'true' },
       networks: [networkName],
     };
 

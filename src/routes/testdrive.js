@@ -33,6 +33,7 @@ const {
   cleanupSessionDir,
   runComposeUp,
   runComposeDown,
+  terminateAllManaged,
 } = require('../engine/dockerEngine');
 
 const router = Router();
@@ -158,6 +159,34 @@ router.post('/stop', async (req, res) => {
     projectName: session.projectName,
     socket:      socket || { emit: () => {} }, // no-op if socket disconnected
   }).catch((err) => console.error('[TestDrive] Stop error:', err.message));
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/testdrive/terminate
+// ---------------------------------------------------------------------------
+// Stops and removes ALL containers labelled com.docker-garage.managed=true.
+// This covers the current session AND any orphans from previous runs.
+
+router.post('/terminate', async (req, res) => {
+  const { socketId } = req.body;
+  const socket = socketId ? _io?.sockets.sockets.get(socketId) : null;
+
+  function emitFn(line, level) {
+    if (socket) socket.emit('testdrive:log', { line, level, ts: Date.now() });
+  }
+
+  res.status(202).json({ message: 'Terminating all managed containers…' });
+
+  try {
+    emitFn('[Docker Garage] Terminating all test containers…', 'system');
+    const count = await terminateAllManaged(emitFn);
+    emitFn(`✅  Terminated ${count} container(s).`, 'success');
+    activeSessions.clear();
+    if (socket) socket.emit('testdrive:stopped', { projectName: 'all' });
+  } catch (err) {
+    log.error('[TestDrive] terminate-all failed', err);
+    emitFn(`❌  Terminate failed: ${err.message}`, 'error');
+  }
 });
 
 // ---------------------------------------------------------------------------

@@ -21,7 +21,7 @@ const { router: testdriveRoute,
 const preflightRoute            = require('./routes/preflight');
 
 // --- Docker engine (Phase 3) ---
-const { getDockerInfo, listContainers } = require('./engine/dockerEngine');
+const { getDockerInfo, listContainers, terminateAllManaged } = require('./engine/dockerEngine');
 
 // =============================================================================
 // 1. Express + HTTP server
@@ -122,9 +122,40 @@ io.on('connection', (socket) => {
 // 6. Start
 // =============================================================================
 
+// =============================================================================
+// 7. Graceful shutdown — clean up managed containers on stop
+// =============================================================================
+
+async function gracefulShutdown(signal) {
+  log.info(`[Server] ${signal} received — cleaning up managed containers…`);
+  try {
+    const count = await terminateAllManaged(null);
+    if (count > 0) log.info(`[Server] Terminated ${count} managed container(s).`);
+  } catch (err) {
+    log.warn(`[Server] Shutdown cleanup failed: ${err.message}`);
+  }
+  process.exit(0);
+}
+
+// Only intercept signals in production — in development nodemon sends SIGTERM
+// on every file-save restart, which would kill all test containers each reload.
+if (process.env.NODE_ENV === 'production') {
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+  process.on('SIGINT',  () => gracefulShutdown('SIGINT'));
+}
+
+// =============================================================================
+// 8. Start — also clean up any orphaned managed containers from a previous run
+// =============================================================================
+
 const PORT = process.env.PORT || 3000;
 
 server.listen(PORT, () => {
   log.banner(`Docker Garage started — http://localhost:${PORT}  [${process.env.NODE_ENV || 'development'}]`);
   log.info(`Log file: ${require('./logger').LOG_FILE}`);
+
+  // Clean up any test containers that survived a previous crash or restart
+  terminateAllManaged(null)
+    .then((n) => { if (n > 0) log.info(`[Startup] Cleaned up ${n} orphaned managed container(s).`); })
+    .catch((err) => log.warn(`[Startup] Startup cleanup skipped: ${err.message}`));
 });

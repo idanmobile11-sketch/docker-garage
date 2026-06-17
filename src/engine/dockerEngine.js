@@ -345,17 +345,84 @@ async function runComposeDown({ sessionDir, projectName, socket }) {
 // ---------------------------------------------------------------------------
 
 /**
- * Returns a simplified list of running containers for the sidebar/UI.
+ * Returns managed (Docker Garage generated) containers for the sidebar/UI.
+ * Filters by label so only test-drive containers appear, not unrelated Docker containers.
+ * Uses `all: true` so crashed/exited containers are visible too.
+ *
+ * Field names match the raw Docker API shape so renderStackPanel works without remapping.
  */
 async function listContainers() {
-  const containers = await docker.listContainers({ all: false });
+  const containers = await docker.listContainers({
+    all:     true,
+    filters: { label: ['com.docker-garage.managed=true'] },
+  });
   return containers.map((c) => ({
-    id:     c.Id.slice(0, 12),
-    names:  c.Names.map((n) => n.replace('/', '')),
-    image:  c.Image,
-    status: c.Status,
-    ports:  c.Ports,
+    Id:     c.Id.slice(0, 12),
+    Names:  c.Names,    // ["/my-app"] — renderStackPanel strips the leading /
+    Image:  c.Image,
+    State:  c.State,    // 'running' | 'exited' | 'created' — drives the badge colour
+    Status: c.Status,   // 'Up 2 hours' — human-readable tooltip
+    Ports:  c.Ports,
   }));
+}
+
+// ---------------------------------------------------------------------------
+// Terminate all Docker Garage managed containers
+// ---------------------------------------------------------------------------
+
+/**
+ * Stops and removes every container that Docker Garage created.
+ *
+ * Two detection strategies are combined so both old and new containers are caught:
+ *   1. Custom label com.docker-garage.managed=true  — added by current generator
+ *   2. Compose working-directory label pointing at GENERATED_ROOT — catches containers
+ *      created before the label was added, because Docker Compose automatically
+ *      stamps every container with com.docker.compose.project.working_dir.
+ *
+ * @param {Function|null} emitFn  Optional (line, level) callback for live log output.
+ * @returns {Promise<number>}     Count of containers removed.
+ */
+async function terminateAllManaged(emitFn) {
+  // Two parallel queries — one per detection strategy
+  const [byLabel, byWorkDir] = await Promise.all([
+    docker.listContainers({
+      all:     true,
+      filters: { label: ['com.docker-garage.managed=true'] },
+    }).catch(() => []),
+    docker.listContainers({
+      all:     true,
+      // Any container stamped with a working-dir label (set by docker compose)
+      filters: { label: ['com.docker.compose.project.working_dir'] },
+    }).catch(() => []),
+  ]);
+
+  // Keep only byWorkDir entries whose working dir is inside GENERATED_ROOT
+  const workDirMatches = byWorkDir.filter((c) =>
+    (c.Labels?.['com.docker.compose.project.working_dir'] || '').startsWith(GENERATED_ROOT)
+  );
+
+  // Merge and deduplicate by container ID
+  const seen = new Set();
+  const all  = [...byLabel, ...workDirMatches].filter((c) => {
+    if (seen.has(c.Id)) return false;
+    seen.add(c.Id);
+    return true;
+  });
+
+  let count = 0;
+  for (const info of all) {
+    const container = docker.getContainer(info.Id);
+    const name = (info.Names?.[0] || info.Id.slice(0, 12)).replace(/^\//, '');
+    try {
+      if (info.State === 'running') await container.stop({ t: 5 });
+      await container.remove({ force: true });
+      if (emitFn) emitFn(`Removed: ${name}`, 'system');
+      count++;
+    } catch {
+      // Already gone or race — not fatal
+    }
+  }
+  return count;
 }
 
 module.exports = {
@@ -366,6 +433,7 @@ module.exports = {
   runComposeUp,
   runComposeDown,
   listContainers,
+  terminateAllManaged,
   checkImageCached,
   GENERATED_ROOT,
 };

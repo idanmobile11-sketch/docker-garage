@@ -381,6 +381,13 @@
                 onclick="runPreflight()">
                 &#x1F50D; Pre-flight Check
             </button>
+            <button class="gen-btn" id="td-terminate-btn"
+                style="width:auto;padding:8px 22px;background:#4a1010;"
+                onmouseenter="this.style.background='#6b1a1a'"
+                onmouseleave="this.style.background='#4a1010'"
+                onclick="terminateAll()">
+                &#x2620; Kill All
+            </button>
             <button class="gen-btn" id="td-clear-btn"
                 style="width:auto;padding:8px 14px;background:#21262d;font-size:0.78rem;color:#8b949e;"
                 onmouseenter="this.style.background='#30363d';this.style.color='#c9d1d9'"
@@ -836,6 +843,36 @@
                 headers: { 'Content-Type': 'application/json' },
                 body:    JSON.stringify({ sessionId: currentSessionId, socketId: socket.id })
             }).catch(err => appendTerminalLine('Stop request failed: ' + err.message, 'error'));
+        }
+
+        async function terminateAll() {
+            if (!confirm('Stop and remove ALL Docker Garage test containers on this host?')) return;
+
+            const btn = document.getElementById('td-terminate-btn');
+            btn.disabled    = true;
+            btn.textContent = 'Terminating…';
+            stopElapsedTimer();
+            document.getElementById('td-elapsed').textContent = '';
+
+            try {
+                const res = await fetch('/api/testdrive/terminate', {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({ socketId: socket.id }),
+                });
+                if (!res.ok) {
+                    const d = await res.json().catch(() => ({}));
+                    appendTerminalLine('❌  Kill All failed: ' + (d.error || res.statusText), 'error');
+                }
+                // Success messages come through via testdrive:log socket events
+            } catch (err) {
+                appendTerminalLine('❌  Kill All network error: ' + err.message, 'error');
+            } finally {
+                btn.disabled    = false;
+                btn.innerHTML   = '&#x2620; Kill All';
+                document.getElementById('td-start-btn').disabled = false;
+                document.getElementById('td-stop-btn').disabled  = true;
+            }
         }
 
         // ============================================================
