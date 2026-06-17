@@ -526,6 +526,155 @@
         .card.classic-mode .wizard-nav  { display: none; }
         .card.classic-mode .wizard-panel { display: block !important; }
         .card.classic-mode .wizard-footer { display: none; }
+
+        /* ================================================================
+           UI Enhancement Layer — v2 Design System
+           ================================================================ */
+
+        /* Blueprint-paper dot grid on the body — subtle, matches product name */
+        body {
+            background: #080b11;
+            background-image: radial-gradient(rgba(88,166,255,0.055) 1px, transparent 1px);
+            background-size: 22px 22px;
+        }
+
+        /* Card lift — now they visibly float above the dot grid */
+        .card {
+            border-top: 3px solid #21262d;
+            box-shadow: 0 4px 28px rgba(0,0,0,0.5);
+        }
+
+        /* Each section has its own color identity */
+        .card.hero      { border-top-color: #388bfd; }
+        #blueprint-card { border-top-color: #8b5cf6; }
+        #testdrive-card { border-top-color: #e8952b; }
+
+        /* Hero H1: blue → purple gradient — not just blue text anymore */
+        .hero h1 {
+            background: linear-gradient(120deg, #79c0ff 0%, #58a6ff 45%, #bc8cff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Status card: left-rail accent so it reads like a dashboard */
+        .status-card {
+            border-left: 3px solid #1f6feb;
+        }
+
+        /* Generate button: gradient instead of flat green */
+        #gen-btn {
+            background: linear-gradient(135deg, #166534 0%, #238636 55%, #2ea043 100%);
+            transition: background 0.2s, box-shadow 0.2s;
+        }
+        #gen-btn:hover {
+            background: linear-gradient(135deg, #238636 0%, #2ea043 60%, #34c653 100%);
+            box-shadow: 0 0 20px rgba(46,160,67,0.28);
+        }
+
+        /* Start Test Drive: amber — "go" signal, distinct from the green generate action */
+        #td-start-btn {
+            background: #92400e;
+            border: 1px solid rgba(245,158,11,0.3);
+            color: #fef3c7;
+            transition: background 0.2s, box-shadow 0.2s;
+        }
+        #td-start-btn:hover {
+            background: #b45309;
+            box-shadow: 0 0 18px rgba(245,158,11,0.22);
+        }
+        #td-start-btn:disabled {
+            background: #21262d;
+            color: #6e7681;
+            border-color: #30363d;
+            box-shadow: none;
+        }
+
+        /* Wizard active step: glow so the current step is unmissable */
+        .wizard-step.active .step-num {
+            box-shadow: 0 0 16px rgba(88,166,255,0.38);
+        }
+        .wizard-step.done .step-num {
+            box-shadow: 0 0 10px rgba(63,185,80,0.28);
+        }
+
+        /* Wizard connector: thicker line + glow when done */
+        .wizard-connector { height: 3px; }
+        .wizard-connector.done { box-shadow: 0 0 6px rgba(63,185,80,0.4); }
+
+        /* Runtime cards: brighter per-language accent stripes */
+        .runtime-card[data-base="node"]   { border-top-color: #22c55e; }
+        .runtime-card[data-base="python"] { border-top-color: #fbbf24; }
+        .runtime-card[data-base="golang"] { border-top-color: #22d3ee; }
+        .runtime-card[data-base="php"]    { border-top-color: #c084fc; }
+        .runtime-card[data-base="nginx"]  { border-top-color: #34d399; }
+        .runtime-card[data-base="ubuntu"] { border-top-color: #fb7185; }
+        .runtime-card[data-base="ruby"]   { border-top-color: #fb7185; }
+        .runtime-card[data-base="java"]   { border-top-color: #fbbf24; }
+        .runtime-card[data-base="rust"]   { border-top-color: #fb923c; }
+        .runtime-card[data-base="bun"]    { border-top-color: #f87171; }
+        .runtime-card[data-base="dotnet"] { border-top-color: #a78bfa; }
+
+        /* Runtime card selected: border glow */
+        .runtime-card.active {
+            box-shadow: 0 0 0 1px #388bfd, 0 0 14px rgba(56,139,253,0.18);
+        }
+
+        /* Service pill selected: subtle glow */
+        .pill.active { box-shadow: 0 0 0 1px rgba(56,139,253,0.4); }
+
+        /* Topology card selected: depth */
+        .topo-card.active {
+            box-shadow: 0 0 0 1px rgba(88,166,255,0.3), 0 0 18px rgba(88,166,255,0.06);
+        }
+
+        /* Stack panel: inherit the test drive amber accent from its parent */
+        #testdrive-card .stack-panel { border-top-color: #e8952b; }
+
+        /* ================================================================
+           Brightness Pass — every text tier pushed up one stop
+           ================================================================ */
+
+        /* Base body text: #c9d1d9 → slightly brighter */
+        body { color: #d4dce8; }
+
+        /* Card h2 section headers — bigger + brighter, they're navigation landmarks */
+        .card h2 { font-size: 1rem; color: #d4dce8; font-weight: bold; }
+
+        /* Tier 1: #adbac7 → #c9d1d9 — labels, form keys, pills, tabs */
+        .label,
+        .status-row .key,
+        .socket-indicator,
+        .hero p.subtitle,
+        .gen-form label,
+        .checkboxes label,
+        .pill,
+        .tab-btn,
+        .output-placeholder,
+        .refresh-btn,
+        #layout-toggle-btn { color: #c9d1d9; }
+
+        /* Tier 2: #8b949e → #adbac7 — secondary info, image names, descriptions */
+        .service-group .cat-label,
+        .td-session-bar,
+        .c-image,
+        .stack-empty,
+        .topo-bridge,
+        .topo-desc,
+        .topo-card.active .topo-desc,
+        .blueprint-title { color: #adbac7; }
+
+        /* Tier 3: #6e7681 → #8b949e — the dimmest labels and port hints */
+        .step-label,
+        .runtime-card .rt-ver,
+        .bp-box .bp-port,
+        .bp-bridge { color: #8b949e; }
+
+        /* Also nudge these font sizes up while we're here */
+        .step-label { font-size: 0.82rem; }
+        .runtime-card .rt-ver { font-size: 0.8rem; }
+        .service-group .cat-label { font-size: 0.8rem; }
+        .blueprint-title { font-size: 0.88rem; }
     </style>
 </head>
 <body>
@@ -627,7 +776,11 @@
             <div class="gen-form" style="margin-top:4px;">
                 <label>
                     Version Tag
-                    <input type="text" id="version" value="20" placeholder="e.g. 20, 3.12, latest" />
+                    <input type="text" id="version" value="20" placeholder="e.g. 20, 3.12, latest"
+                           oninput="checkVersionWarn()" onblur="checkVersionWarn()" />
+                    <span id="version-warn" style="display:none;color:#d29922;font-size:0.72rem;margin-top:3px;">
+                        ⚠ No version pinned — image tag may change on next pull
+                    </span>
                 </label>
                 <label>
                     Custom Start Command <span style="color:#484f58;font-size:0.68rem;">(optional)</span>
@@ -812,7 +965,7 @@
     </div>
 
     <!-- ===== TEST DRIVE ===== -->
-    <div class="card">
+    <div class="card" id="testdrive-card">
         <h2>&#x1F680; Test Drive</h2>
         <p style="color:#8b949e;font-size:0.82rem;margin-bottom:16px;">
             Generates files from the config above, then runs
@@ -862,15 +1015,30 @@
             <div id="preflight-ports"></div>
         </div>
 
+        <!-- Port conflict quick-fix banner — shown when auto-preflight finds a blocked port -->
+        <div id="conflict-banner" style="display:none;margin-bottom:12px;background:#1a0e00;border:1px solid #7d4e00;
+             border-left:3px solid #d29922;border-radius:6px;padding:10px 14px;font-size:0.82rem;">
+            <div style="color:#d29922;font-weight:600;margin-bottom:8px;">⛔ Port conflict — quick fix</div>
+            <div id="conflict-actions" style="display:flex;flex-direction:column;gap:6px;"></div>
+        </div>
+
         <!-- Two-column: terminal + stack status -->
         <div class="td-body">
             <div>
                 <div class="td-session-bar">
-                    <div style="display:flex;align-items:center;gap:7px;">
+                    <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
                         <span id="td-mode-label"></span>
                         <span id="td-session" style="font-family:monospace;"></span>
+                        <span id="td-project-badge" style="display:none;font-family:monospace;font-size:0.72rem;
+                              background:#0d1117;border:1px solid #30363d;border-radius:4px;padding:1px 7px;
+                              color:#adbac7;cursor:pointer;" title="Click to copy docker ps command"
+                              onclick="copyDockerCmd()"></span>
                     </div>
                     <div style="display:flex;align-items:center;gap:8px;">
+                        <button id="td-copy-btn" onclick="copyTerminal()"
+                                style="font-size:0.72rem;padding:2px 9px;background:#21262d;border:1px solid #30363d;
+                                       color:#adbac7;border-radius:4px;cursor:pointer;"
+                                title="Copy terminal output to clipboard">&#x1F4CB; Copy</button>
                         <button id="td-exit-btn" onclick="exitTerminalMode()">&#x2715; Exit</button>
                         <span id="td-elapsed"></span>
                     </div>
@@ -997,12 +1165,39 @@
             system:  '\x1b[36m',
         };
 
+        // Shadow log kept in sync so Copy can access plain-text content
+        const termLog = [];
+
         function appendTerminalLine(text, level = 'info') {
             term.writeln((ANSI[level] || ANSI.info) + (text || '') + '\x1b[0m');
+            termLog.push(text || '');
         }
 
         function clearTerminal() {
             term.clear();
+            termLog.length = 0;
+        }
+
+        function copyTerminal() {
+            const btn = document.getElementById('td-copy-btn');
+            navigator.clipboard.writeText(termLog.join('\n')).then(() => {
+                btn.textContent = '✅ Copied';
+                setTimeout(() => { btn.innerHTML = '&#x1F4CB; Copy'; }, 1500);
+            }).catch(() => {
+                btn.textContent = 'Failed';
+                setTimeout(() => { btn.innerHTML = '&#x1F4CB; Copy'; }, 1500);
+            });
+        }
+
+        let _currentProjectName = '';
+
+        function copyDockerCmd() {
+            const cmd = `docker ps --filter label=com.docker-garage.managed=true`;
+            const badge = document.getElementById('td-project-badge');
+            navigator.clipboard.writeText(cmd).then(() => {
+                badge.textContent = '✅ Copied!';
+                setTimeout(() => { badge.textContent = '📦 ' + _currentProjectName; }, 1500);
+            });
         }
 
         // ============================================================
@@ -1064,6 +1259,7 @@
             appendTerminalLine('✅  Stack "' + projectName + '" stopped.', 'success');
             document.getElementById('td-start-btn').disabled = false;
             document.getElementById('td-stop-btn').disabled  = true;
+            document.getElementById('td-project-badge').style.display = 'none';
             setTimeout(() => refreshContainers(), 500);
         });
 
@@ -1074,6 +1270,22 @@
         // ============================================================
         // Health + generator probe on load
         // ============================================================
+
+        // Refreshes only the container count (the only value that changes at runtime).
+        // Docker Version / Host OS / API status are static after boot — fetched once below.
+        function refreshContainerCount() {
+            fetch('/api/health')
+                .then(r => r.json())
+                .then(data => {
+                    const el = document.getElementById('docker-containers');
+                    el.textContent = data.docker.runningContainers + ' running / ' + data.docker.totalContainers + ' total';
+                    el.className = 'value ok';
+                })
+                .catch(() => {
+                    document.getElementById('docker-containers').textContent = '—';
+                });
+        }
+
         fetch('/api/health')
             .then(r => r.json())
             .then(data => {
@@ -1083,11 +1295,19 @@
                 document.getElementById('docker-os').textContent      = data.docker.os;
                 document.getElementById('docker-containers').textContent =
                     data.docker.runningContainers + ' running / ' + data.docker.totalContainers + ' total';
+                document.getElementById('docker-containers').className = 'value ok';
             })
             .catch(() => {
                 document.getElementById('api-status').textContent = 'Error';
                 document.getElementById('api-status').className   = 'value error';
             });
+
+        // Poll every 5 s so the count stays current without manual refresh
+        setInterval(refreshContainerCount, 5000);
+
+        // Also refresh immediately on Test Drive events so the count jumps right away
+        socket.on('testdrive:done',    refreshContainerCount);
+        socket.on('testdrive:stopped', refreshContainerCount);
 
         fetch('/api/generate', {
             method: 'POST',
@@ -1417,6 +1637,93 @@
         // ============================================================
         // Pre-flight check
         // ============================================================
+        // ============================================================
+        // Version warning
+        // ============================================================
+        function checkVersionWarn() {
+            const v   = document.getElementById('version').value.trim();
+            const el  = document.getElementById('version-warn');
+            el.style.display = v === '' ? 'block' : 'none';
+        }
+
+        // ============================================================
+        // Port conflict quick-fix helpers
+        // ============================================================
+
+        // SERVICE_PORTS (already declared above for Blueprint rendering) is reused here
+        // to tell apart "app port" (user-configurable) from "service port" (fixed).
+
+        function hideConflictBanner() {
+            document.getElementById('conflict-banner').style.display = 'none';
+            document.getElementById('conflict-actions').innerHTML = '';
+        }
+
+        // Renders the amber quick-fix banner with one action row per blocked port.
+        // blockedPorts: [{ port, label }]
+        function showConflictBanner(blockedPorts) {
+            const actionsDiv = document.getElementById('conflict-actions');
+            actionsDiv.innerHTML = '';
+
+            blockedPorts.forEach(({ port, label }) => {
+                const row = document.createElement('div');
+                row.style.cssText = 'display:flex;align-items:center;gap:10px;flex-wrap:wrap;';
+
+                const desc = document.createElement('span');
+                desc.style.cssText = 'color:#c9d1d9;flex:1;min-width:180px;';
+
+                const isAppPort = label === 'App';
+                if (isAppPort) {
+                    const suggested = port + 1;
+                    desc.textContent = `Port ${port} (your app) is taken.`;
+
+                    const btn = document.createElement('button');
+                    btn.textContent = `Switch to port ${suggested} and retry`;
+                    btn.style.cssText = `padding:4px 12px;background:#92400e;border:1px solid #d29922;
+                        color:#fef3c7;border-radius:4px;cursor:pointer;font-size:0.78rem;white-space:nowrap;`;
+                    btn.onclick = () => {
+                        document.getElementById('port').value = suggested;
+                        hideConflictBanner();
+                        startTestDrive();
+                    };
+
+                    row.appendChild(desc);
+                    row.appendChild(btn);
+                } else {
+                    desc.textContent = `Port ${port} (${label}) is taken — likely a previous Docker Garage session.`;
+
+                    const btn = document.createElement('button');
+                    btn.textContent = 'Kill All managed containers';
+                    btn.style.cssText = `padding:4px 12px;background:#4a1010;border:1px solid #f85149;
+                        color:#ffa8a3;border-radius:4px;cursor:pointer;font-size:0.78rem;white-space:nowrap;`;
+                    btn.onclick = () => {
+                        hideConflictBanner();
+                        terminateAll();
+                    };
+
+                    row.appendChild(desc);
+                    row.appendChild(btn);
+                }
+
+                actionsDiv.appendChild(row);
+            });
+
+            document.getElementById('conflict-banner').style.display = 'block';
+        }
+
+        // ============================================================
+        // Pre-flight check — shared data fetcher
+        // ============================================================
+        async function fetchPreflightData() {
+            const res  = await fetch('/api/preflight', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify(getCurrentConfig()),
+            });
+            if (!res.ok) throw new Error('Preflight API error ' + res.status);
+            return res.json();
+        }
+
+        // Manual "Pre-flight Check" button — renders results into the panel UI
         async function runPreflight() {
             const btn = document.getElementById('td-check-btn');
             btn.textContent = '⏳ Checking…';
@@ -1426,16 +1733,12 @@
             const imgDiv  = document.getElementById('preflight-images');
             const portDiv = document.getElementById('preflight-ports');
             panel.style.display = 'block';
+            hideConflictBanner();
             imgDiv.innerHTML  = '<span style="color:#8b949e;">Checking images…</span>';
             portDiv.innerHTML = '';
 
             try {
-                const res  = await fetch('/api/preflight', {
-                    method:  'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body:    JSON.stringify(getCurrentConfig()),
-                });
-                const data = await res.json();
+                const data = await fetchPreflightData();
 
                 const imgLines = data.images.map(({ label, image, cached }) => {
                     const icon  = cached ? '✅' : '📥';
@@ -1446,10 +1749,21 @@
                 imgDiv.innerHTML = '<div style="color:#8b949e;margin-bottom:4px;font-size:0.72rem;text-transform:uppercase;letter-spacing:.05em;">Images</div>' + imgLines.join('');
 
                 const portLines = data.ports.map(({ label, port, available }) => {
-                    const icon  = available ? '✅' : '⛔';
-                    const color = available ? '#3fb950' : '#f85149';
-                    const note  = available ? 'available' : 'IN USE — compose will fail!';
-                    return `<div style="color:${color};margin:2px 0;">${icon} <b>Port ${port}</b> (${label}) — ${note}</div>`;
+                    if (available) {
+                        return `<div style="color:#3fb950;margin:2px 0;">✅ <b>Port ${port}</b> (${label}) — available</div>`;
+                    }
+                    const isApp = label === 'App';
+                    const fixBtn = isApp
+                        ? `<button onclick="document.getElementById('port').value=${port+1};document.getElementById('preflight-panel').style.display='none';runPreflight();"
+                               style="margin-left:8px;padding:2px 8px;background:#92400e;border:1px solid #d29922;
+                               color:#fef3c7;border-radius:4px;cursor:pointer;font-size:0.72rem;">
+                               Switch to ${port+1} &amp; recheck</button>`
+                        : `<button onclick="terminateAll()"
+                               style="margin-left:8px;padding:2px 8px;background:#4a1010;border:1px solid #f85149;
+                               color:#ffa8a3;border-radius:4px;cursor:pointer;font-size:0.72rem;">
+                               Kill All managed</button>`;
+                    return `<div style="color:#f85149;margin:2px 0;display:flex;align-items:center;flex-wrap:wrap;">
+                        ⛔ <b style="margin:0 4px;">Port ${port}</b> (${label}) — IN USE ${fixBtn}</div>`;
                 });
                 portDiv.innerHTML = '<div style="color:#8b949e;margin-bottom:4px;margin-top:8px;font-size:0.72rem;text-transform:uppercase;letter-spacing:.05em;">Ports</div>' + portLines.join('');
 
@@ -1472,11 +1786,91 @@
                 return;
             }
 
+            const config = getCurrentConfig();
             clearTerminal();
             stopElapsedTimer();
-            document.getElementById('td-elapsed').textContent = '';
+            document.getElementById('td-elapsed').textContent    = '';
+            document.getElementById('td-session').textContent    = 'Pre-flight…';
+            document.getElementById('td-project-badge').style.display = 'none';
+            document.getElementById('td-start-btn').disabled     = true;
+            document.getElementById('td-stop-btn').disabled      = true;
+
+            // ---- Auto preflight ----
+            // Scroll the Test Drive card into view so the user can see what's happening
+            document.getElementById('testdrive-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+            hideConflictBanner();
+
+            // Open and populate the preflight panel so results are visible above the terminal
+            const pfPanel  = document.getElementById('preflight-panel');
+            const pfImages = document.getElementById('preflight-images');
+            const pfPorts  = document.getElementById('preflight-ports');
+            pfPanel.style.display = 'block';
+            pfImages.innerHTML = '<span style="color:#8b949e;">⏳ Checking images and ports…</span>';
+            pfPorts.innerHTML  = '';
+
+            appendTerminalLine('[Docker Garage] Running pre-flight check…', 'system');
+            const blockedPorts = [];
+            try {
+                const pf = await fetchPreflightData();
+
+                // Populate preflight panel (same render as manual check)
+                const imgLines = pf.images.map(({ label, image, cached }) => {
+                    const icon  = cached ? '✅' : '📥';
+                    const color = cached ? '#3fb950' : '#d29922';
+                    const note  = cached ? 'cached' : 'will pull';
+                    return `<div style="color:${color};margin:2px 0;">${icon} <b>${label}</b> — <span style="font-family:monospace;">${image}</span> <span style="color:#484f58;">(${note})</span></div>`;
+                });
+                pfImages.innerHTML = '<div style="color:#8b949e;margin-bottom:4px;font-size:0.72rem;text-transform:uppercase;letter-spacing:.05em;">Images</div>' + imgLines.join('');
+
+                const portLines = pf.ports.map(({ label, port, available }) => {
+                    if (available) {
+                        return `<div style="color:#3fb950;margin:2px 0;">✅ <b>Port ${port}</b> (${label}) — available</div>`;
+                    }
+                    const isApp = label === 'App';
+                    const fixBtn = isApp
+                        ? `<button onclick="document.getElementById('port').value=${port+1};document.getElementById('preflight-panel').style.display='none';startTestDrive();"
+                               style="margin-left:8px;padding:2px 8px;background:#92400e;border:1px solid #d29922;
+                               color:#fef3c7;border-radius:4px;cursor:pointer;font-size:0.72rem;">Switch to ${port+1} &amp; retry</button>`
+                        : `<button onclick="terminateAll()"
+                               style="margin-left:8px;padding:2px 8px;background:#4a1010;border:1px solid #f85149;
+                               color:#ffa8a3;border-radius:4px;cursor:pointer;font-size:0.72rem;">Kill All managed</button>`;
+                    return `<div style="color:#f85149;margin:2px 0;display:flex;align-items:center;flex-wrap:wrap;">⛔ <b style="margin:0 4px;">Port ${port}</b> (${label}) — IN USE ${fixBtn}</div>`;
+                });
+                pfPorts.innerHTML = '<div style="color:#8b949e;margin-bottom:4px;margin-top:8px;font-size:0.72rem;text-transform:uppercase;letter-spacing:.05em;">Ports</div>' + portLines.join('');
+
+                // Also write to terminal
+                pf.images.forEach(({ label, image, cached }) => {
+                    if (cached) appendTerminalLine(`✅  ${label} — ${image} (cached)`, 'success');
+                    else        appendTerminalLine(`📥  ${label} — ${image} (will pull)`, 'info');
+                });
+                pf.ports.forEach(({ label, port, available }) => {
+                    if (available) {
+                        appendTerminalLine(`✅  Port ${port} (${label}) — available`, 'success');
+                    } else {
+                        appendTerminalLine(`⛔  Port ${port} (${label}) — IN USE`, 'error');
+                        blockedPorts.push({ port, label });
+                    }
+                });
+            } catch (err) {
+                pfImages.innerHTML = `<span style="color:#d29922;">⚠ Pre-flight unavailable — proceeding</span>`;
+                appendTerminalLine(`⚠  Pre-flight check failed: ${err.message} — continuing anyway`, 'info');
+            }
+
+            if (blockedPorts.length > 0) {
+                appendTerminalLine('', 'info');
+                appendTerminalLine('❌  Cannot start — fix the port conflicts above and retry.', 'error');
+                showConflictBanner(blockedPorts);
+                document.getElementById('td-start-btn').disabled  = false;
+                document.getElementById('td-stop-btn').disabled   = true;
+                document.getElementById('td-session').textContent = '';
+                return;
+            }
+
+            // All clear — collapse the panel and go
+            pfPanel.style.display = 'none';
+            appendTerminalLine('', 'info');
             document.getElementById('td-session').textContent = 'Starting…';
-            document.getElementById('td-start-btn').disabled  = true;
             document.getElementById('td-stop-btn').disabled   = false;
             startElapsedTimer();
 
@@ -1484,7 +1878,7 @@
                 const res  = await fetch('/api/testdrive/start', {
                     method:  'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body:    JSON.stringify({ config: getCurrentConfig(), socketId: socket.id })
+                    body:    JSON.stringify({ config, socketId: socket.id })
                 });
                 const data = await res.json();
 
@@ -1502,8 +1896,14 @@
                 }
 
                 currentSessionId = data.sessionId;
-                document.getElementById('td-session').textContent =
-                    'session: ' + data.sessionId.slice(0, 8) + '…';
+                _currentProjectName = config.appName;
+
+                document.getElementById('td-session').textContent = 'session: ' + data.sessionId.slice(0, 8) + '…';
+
+                const badge = document.getElementById('td-project-badge');
+                badge.textContent    = '📦 ' + config.appName;
+                badge.style.display  = 'inline-block';
+                badge.title          = 'Click to copy: docker ps --filter label=com.docker-garage.managed=true';
 
             } catch (err) {
                 stopElapsedTimer();
