@@ -8,9 +8,15 @@ A beginner-friendly web app for visually configuring, generating, and live-testi
 
 ## What it does
 
-- **Generate** — pick a base runtime (Node.js, Python, Go, PHP, Nginx, Ubuntu), add auxiliary services (Redis, Postgres, MySQL, MongoDB, RabbitMQ, MinIO, and more), tune options, and instantly get a production-ready `Dockerfile` + `docker-compose.yml`
-- **Test Drive** — click one button to spin the generated stack up on your real Docker daemon and watch live logs stream into the browser terminal
+- **Blueprint Engine** — pick a base runtime (Node.js, Python, Go, PHP, Nginx, Ubuntu), add auxiliary services, tune options, choose a network topology, and instantly get a production-ready `Dockerfile` + `docker-compose.yml`
+- **Download ZIP** — export the full stack as a ZIP (`Dockerfile`, `docker-compose.yml`, `.env.example`, `README.md`) with one click
+- **Saved Presets** — save any config to `localStorage` and reload it later; overwrite-safe with a name-collision guard
 - **Pre-flight check** — before launching, see which images are cached locally vs. need a pull, and which ports are already in use
+- **Test Drive** — spin the generated stack up on your real Docker daemon and watch live logs stream into a built-in terminal (xterm.js)
+- **Live Stack** — real-time container status panel that auto-refreshes while a session is running; each container shown as a card with a green (running) or red (exited) status border
+- **Exec Shell** — open an interactive `sh` shell inside any running container directly in the browser terminal
+- **Live Container Logs** — stream `docker logs -f` output into a dedicated read-only log pane (separate from the exec shell, so both can be open at the same time)
+- **Kill All** — terminate every managed container at once without running `docker compose down`
 
 ---
 
@@ -20,7 +26,7 @@ Docker Garage uses **Docker-outside-of-Docker (DooD)**:
 
 ```
 Browser
-  │  HTTP / WebSocket
+  │  HTTP / WebSocket (Socket.io)
   ▼
 docker-garage-app container  (Node.js + Express + Socket.io)
   │  /var/run/docker.sock (mounted from host)
@@ -33,6 +39,22 @@ my-app + redis + postgres + …  (sibling containers on the host)
 
 Generated files are written to `/tmp/docker-garage/` which is bind-mounted to the host so the Docker daemon can reach them directly.
 
+### WebSocket events
+
+| Event (client → server) | Purpose |
+|---|---|
+| `containers:refresh` | Fetch live container list |
+| `exec:start` / `exec:stop` | Open / close interactive shell |
+| `exec:input` / `exec:resize` | Forward keystrokes and terminal resize |
+| `logs:start` / `logs:stop` | Start / stop streaming container logs |
+
+| Event (server → client) | Purpose |
+|---|---|
+| `containers:list` | Updated container list |
+| `exec:output` / `exec:ended` | Shell output / session ended |
+| `logs:output` / `logs:ended` | Log stream data / stream ended |
+| `testdrive:log` / `testdrive:done` / `testdrive:stopped` | Compose build log / completion |
+
 ---
 
 ## Quick start
@@ -44,7 +66,7 @@ Generated files are written to `/tmp/docker-garage/` which is bind-mounted to th
 ### Run
 
 ```bash
-git clone https://github.com/your-username/docker-garage.git
+git clone https://github.com/idanmobile11-sketch/docker-garage.git
 cd docker-garage
 docker compose up -d --build
 ```
@@ -64,25 +86,26 @@ docker compose down
 ```
 docker-garage/
 ├── src/
-│   ├── index.js                   # Express + Socket.io server
+│   ├── index.js                   # Express + Socket.io server + WebSocket handlers
 │   ├── logger.js                  # File + console logger → /tmp/docker-garage/docker-garage.log
 │   ├── engine/
-│   │   ├── dockerEngine.js        # Dockerode wrapper — compose up/down, log streaming
+│   │   ├── dockerEngine.js        # Dockerode wrapper — compose up/down, log streaming, cleanup
 │   │   └── portChecker.js         # Port availability checks
 │   ├── generator/
 │   │   ├── dockerfileGenerator.js # Dockerfile string builder (6 base runtimes)
-│   │   ├── composeGenerator.js    # docker-compose.yml string builder
+│   │   ├── composeGenerator.js    # docker-compose.yml string builder + network topology
 │   │   └── serviceTemplates.js    # 12 auxiliary service definitions
 │   └── routes/
 │       ├── generate.js            # POST /api/generate
-│       ├── testdrive.js           # POST /api/testdrive/start|stop
+│       ├── testdrive.js           # POST /api/testdrive/start|stop|terminate
 │       └── preflight.js           # POST /api/preflight (image + port checks)
 ├── public/
-│   ├── index.html                 # Single-page frontend (Vanilla JS)
+│   ├── index.html                 # Single-page frontend (Vanilla JS + xterm.js)
 │   └── logo.svg                   # App logo
 ├── Dockerfile.dev                 # Dev image (node:20-alpine + docker-cli)
 ├── docker-compose.yml             # App container definition
-└── docker-entrypoint.sh           # Runtime socket permission + tmp dir setup
+├── docker-entrypoint.sh           # Runtime socket permission + tmp dir setup
+└── Makefile                       # make up / make down / make clean
 ```
 
 ---
@@ -117,34 +140,61 @@ docker-garage/
 
 ---
 
+## Network topologies
+
+Configured via the **Network Topology** selector in the Blueprint Engine:
+
+| Topology | Description |
+|----------|-------------|
+| **Flat** | Single shared network — all services reach each other (default) |
+| **Segmented** | Two networks: `web` (nginx + app) and `internal` (app + all services). Nginx cannot reach the database directly. |
+| **Full** | Three networks: `web`, `app`, and `db`. Database is reachable only from the app. |
+
+> The `host` driver bypasses named networks entirely and shares the host network stack directly.
+
+---
+
 ## Options
 
-- **Non-root user** — adds a least-privilege `appuser` to the generated Dockerfile
-- **Healthchecks** — adds `HEALTHCHECK` to the Dockerfile and `depends_on: condition: service_healthy` to compose
-- **Named volumes** — adds a named volume for `/app/data` persistence
+| Option | What it does |
+|--------|-------------|
+| **Non-root user** | Adds a least-privilege `appuser` to the generated Dockerfile |
+| **Healthchecks** | Adds `HEALTHCHECK` to the Dockerfile and `depends_on: condition: service_healthy` to compose so the app waits for services to be ready |
+| **Named volumes** | Adds a named volume for `/app/data` persistence across restarts |
+
+---
+
+## Container management
+
+All containers generated by Docker Garage are tagged with the label `com.docker-garage.managed=true`. This enables:
+
+- **Kill All** button — stops and removes all managed containers without needing `docker compose down`
+- **Startup cleanup** — on server start, any orphaned containers from a previous session are automatically removed
+- **Graceful shutdown** — in production mode, `SIGTERM`/`SIGINT` tears down all managed containers before exit
+
+To inspect or clean up manually from outside the container:
+
+```bash
+# List all managed containers
+docker ps --filter label=com.docker-garage.managed=true
+
+# Remove them
+docker rm -f $(docker ps -aq --filter label=com.docker-garage.managed=true)
+```
 
 ---
 
 ## Debugging
 
-Logs are written to `/tmp/docker-garage/docker-garage.log` on the host (via the bind mount). Read them any time:
+Logs are written to `/tmp/docker-garage/docker-garage.log` on the host (via the bind mount). Auto-rotates at 5 MB.
 
 ```bash
 # From the host (Linux/macOS/WSL)
-cat /tmp/docker-garage/docker-garage.log
+tail -f /tmp/docker-garage/docker-garage.log
 
-# Or from inside the container
+# Or from inside the app container
 docker exec docker-garage-app cat /tmp/docker-garage/docker-garage.log
 ```
-
----
-
-## Roadmap
-
-- [x] Phase 1 — Scaffolding & containerization (DooD, entrypoint, hot-reload)
-- [x] Phase 2 — Generator (Dockerfile + docker-compose.yml, 6 runtimes, 12 services)
-- [x] Phase 3 — Docker Engine + WebSockets (live log streaming, Test Drive, pre-flight)
-- [ ] Phase 4 — Showroom UI + xterm.js terminal
 
 ---
 
