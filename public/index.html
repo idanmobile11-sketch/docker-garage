@@ -169,17 +169,20 @@
         /* ---- Container status sidebar ---- */
         .stack-panel {
             background: #0d1117;
-            border: 1px solid #30363d;
-            border-radius: 6px;
-            padding: 12px;
+            border: 2px solid #21262d;
+            border-top: 4px solid #388bfd;
+            border-radius: 10px;
+            padding: 14px;
         }
         .stack-panel-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #21262d;
         }
-        .stack-panel-header .label { margin-bottom: 0; }
+        .stack-panel-header .label { margin-bottom: 0; color: #79c0ff; letter-spacing: 0.06em; }
         .refresh-btn {
             background: none; border: 1px solid #30363d; color: #8b949e;
             border-radius: 4px; padding: 2px 8px; font-size: 0.68rem;
@@ -188,15 +191,21 @@
         .refresh-btn:hover { background: #21262d; color: #c9d1d9; }
 
         .container-item {
-            border-bottom: 1px solid #21262d;
-            padding: 8px 0;
-            font-size: 0.74rem;
+            background: #161b22;
+            border: 1px solid #21262d;
+            border-left: 3px solid #484f58;
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+            font-size: 0.8rem;
         }
-        .container-item:last-child { border-bottom: none; }
-        .c-name  { color: #c9d1d9; font-weight: 600; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .c-image { color: #484f58; font-size: 0.68rem; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .c-meta  { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-        .c-ports { color: #58a6ff; font-size: 0.68rem; }
+        .container-item.is-running { border-left-color: #3fb950; }
+        .container-item.is-exited  { border-left-color: #f85149; }
+        .container-item:last-child { margin-bottom: 0; }
+        .c-name  { color: #c9d1d9; font-weight: 700; font-size: 0.9rem; margin-bottom: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .c-image { color: #6e7681; font-size: 0.7rem; margin-bottom: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .c-meta  { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+        .c-ports { color: #58a6ff; font-size: 0.7rem; }
 
         .s-badge {
             display: inline-flex; align-items: center; gap: 3px;
@@ -210,6 +219,87 @@
         .s-badge.running .s-dot { animation: pulse 1.5s infinite; }
 
         .stack-empty { color: #484f58; font-style: italic; font-size: 0.78rem; padding: 10px 0; }
+
+        /* ---- Container action buttons (Shell / Logs) ---- */
+        .c-actions { display: flex; gap: 5px; margin-top: 6px; }
+        .c-action-btn {
+            flex: 1; padding: 3px 0; font-size: 0.7rem; font-family: inherit;
+            border-radius: 4px; cursor: pointer; font-weight: 600;
+            transition: background 0.12s, color 0.12s;
+        }
+        .shell-btn {
+            background: #0d2035; border: 1px solid #388bfd; color: #79c0ff;
+        }
+        .shell-btn:hover { background: #1a3a6e; }
+        .logs-btn {
+            background: #0f2010; border: 1px solid #3fb950; color: #7ee787;
+        }
+        .logs-btn:hover { background: #1a3a1a; }
+
+        /* ---- Exit session button in the session bar ---- */
+        #td-exit-btn {
+            display: none;
+            padding: 1px 10px; font-size: 0.68rem; font-family: inherit;
+            background: #2b1a00; border: 1px solid #d29922; color: #d29922;
+            border-radius: 4px; cursor: pointer;
+        }
+        #td-exit-btn:hover { background: #3d2600; }
+
+        /* Session bar mode label */
+        #td-mode-label {
+            font-size: 0.7rem; font-weight: bold; letter-spacing: 0.04em;
+            padding: 1px 8px; border-radius: 10px; display: none;
+        }
+        #td-mode-label.exec { background: #0d2035; color: #79c0ff; border: 1px solid #388bfd; }
+        #td-mode-label.logs { background: #0f2010; color: #7ee787; border: 1px solid #3fb950; }
+
+        /* ---- Log pane (separate read-only panel for live container logs) ---- */
+        .log-pane-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #0d1a0d;
+            border: 2px solid #238636;
+            border-top: 4px solid #3fb950;
+            border-bottom: none;
+            border-radius: 10px 10px 0 0;
+            padding: 10px 14px;
+        }
+        .log-pane-badge {
+            font-size: 0.72rem;
+            font-weight: bold;
+            letter-spacing: 0.05em;
+            padding: 2px 9px;
+            border-radius: 10px;
+            background: #0f2010;
+            color: #7ee787;
+            border: 1px solid #3fb950;
+        }
+        #log-pane-name {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.84rem;
+            color: #7ee787;
+        }
+        #log-stop-btn {
+            padding: 2px 10px;
+            font-size: 0.68rem;
+            font-family: inherit;
+            background: #0f2010;
+            border: 1px solid #3fb950;
+            color: #7ee787;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        #log-stop-btn:hover { background: #1a3a1a; }
+        #log-xterm-container {
+            background: #010409;
+            border: 2px solid #238636;
+            border-top: none;
+            border-radius: 0 0 10px 10px;
+            padding: 6px 8px;
+            height: 260px;
+            overflow: hidden;
+        }
 
         /* ---- Network Topology Cards (Phase 5) ---- */
         .topo-grid {
@@ -610,8 +700,14 @@
         <div class="td-body">
             <div>
                 <div class="td-session-bar">
-                    <span id="td-session" style="font-family:monospace;"></span>
-                    <span id="td-elapsed"></span>
+                    <div style="display:flex;align-items:center;gap:7px;">
+                        <span id="td-mode-label"></span>
+                        <span id="td-session" style="font-family:monospace;"></span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <button id="td-exit-btn" onclick="exitTerminalMode()">&#x2715; Exit</button>
+                        <span id="td-elapsed"></span>
+                    </div>
                 </div>
                 <div id="xterm-container"></div>
             </div>
@@ -625,6 +721,18 @@
                     <div class="stack-empty">Stack not running</div>
                 </div>
             </div>
+        </div>
+
+        <!-- Log pane — separate read-only terminal for live container logs -->
+        <div id="log-pane" style="display:none;margin-top:14px;">
+            <div class="log-pane-bar">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <span class="log-pane-badge">LOGS</span>
+                    <span id="log-pane-name"></span>
+                </div>
+                <button id="log-stop-btn" onclick="stopLogPane()">&#x2715; Stop</button>
+            </div>
+            <div id="log-xterm-container"></div>
         </div>
     </div>
 
@@ -648,8 +756,12 @@
             <span>Phase 4 — Showroom UI &amp; xterm.js Terminal</span>
         </div>
         <div class="phase-item">
+            <span class="badge done">DONE</span>
+            <span>Phase 5 — Export ZIP, Saved Presets &amp; Network Topology</span>
+        </div>
+        <div class="phase-item">
             <span class="badge active-phase">NOW</span>
-            <span>Phase 5 — Export ZIP &amp; Saved Presets</span>
+            <span>Final Phase — Exec Shell &amp; Live Container Logs</span>
         </div>
     </div>
 
@@ -690,7 +802,10 @@
         term.open(document.getElementById('xterm-container'));
         fitAddon.fit();
 
-        window.addEventListener('resize', () => fitAddon.fit());
+        window.addEventListener('resize', () => {
+            fitAddon.fit();
+            if (document.getElementById('log-pane').style.display !== 'none') logFitAddon.fit();
+        });
 
         // Welcome banner
         term.writeln('\x1b[36m╔══════════════════════════════════════════╗\x1b[0m');
@@ -700,6 +815,41 @@
         term.writeln('\x1b[90mPress \x1b[37mStart Test Drive\x1b[90m to launch your stack.\x1b[0m');
         term.writeln('\x1b[90mUse \x1b[37mPre-flight Check\x1b[90m to verify images and ports first.\x1b[0m');
         term.writeln('');
+
+        // ============================================================
+        // Log pane xterm (read-only — for live container logs)
+        // ============================================================
+        const logTerm = new Terminal({
+            theme: {
+                background:   '#010409',
+                foreground:   '#c9d1d9',
+                cursor:       '#3fb950',
+                cursorAccent: '#010409',
+                black:        '#0d1117',
+                red:          '#f85149',
+                green:        '#3fb950',
+                yellow:       '#d29922',
+                blue:         '#58a6ff',
+                magenta:      '#bc8cff',
+                cyan:         '#39c5cf',
+                white:        '#c9d1d9',
+                brightBlack:  '#484f58',
+                brightGreen:  '#56d364',
+                brightRed:    '#ffa198',
+                brightWhite:  '#e6edf3',
+            },
+            fontFamily: "'Courier New', Courier, monospace",
+            fontSize:   12,
+            lineHeight: 1.5,
+            scrollback: 5000,
+            convertEol: true,
+            cursorBlink: false,
+            disableStdin: true,
+        });
+        const logFitAddon = new FitAddon.FitAddon();
+        logTerm.loadAddon(logFitAddon);
+        logTerm.open(document.getElementById('log-xterm-container'));
+        logFitAddon.fit();
 
         // ANSI color codes per log level
         const ANSI = {
@@ -1103,29 +1253,130 @@
             }
 
             el.innerHTML = containers.map(c => {
-                const name  = (c.Names?.[0] || '').replace(/^\//, '') || '—';
-                const image = c.Image || '—';
-                const state = (c.State || '').toLowerCase();
-                const ports = (c.Ports || [])
+                const name      = (c.Names?.[0] || '').replace(/^\//, '') || '—';
+                const image     = c.Image || '—';
+                const state     = (c.State || '').toLowerCase();
+                const isRunning = state === 'running';
+                const ports     = (c.Ports || [])
                     .filter(p => p.PublicPort)
                     .map(p => `${p.PublicPort}→${p.PrivatePort}`)
                     .join(' ');
 
-                const cls = state === 'running' ? 'running' : state === 'exited' ? 'exited' : 'other';
+                const cls = isRunning ? 'running' : state === 'exited' ? 'exited' : 'other';
 
-                return `<div class="container-item">
-                    <div class="c-name" title="${name}">${name}</div>
-                    <div class="c-image" title="${image}">${image}</div>
+                // Shell and Logs buttons only make sense on running containers
+                const actions = isRunning ? `
+                    <div class="c-actions">
+                        <button class="c-action-btn shell-btn"
+                            data-id="${escHtml(c.Id)}" data-name="${escHtml(name)}"
+                            onclick="startExec(this.dataset.id, this.dataset.name)">Shell</button>
+                        <button class="c-action-btn logs-btn"
+                            data-id="${escHtml(c.Id)}" data-name="${escHtml(name)}"
+                            onclick="startLogs(this.dataset.id, this.dataset.name)">Logs</button>
+                    </div>` : '';
+
+                const stateClass = isRunning ? 'is-running' : state === 'exited' ? 'is-exited' : '';
+                return `<div class="container-item ${stateClass}">
+                    <div class="c-name" title="${escHtml(name)}">${escHtml(name)}</div>
+                    <div class="c-image" title="${escHtml(image)}">${escHtml(image)}</div>
                     <div class="c-meta">
                         <span class="s-badge ${cls}"><span class="s-dot"></span>${state}</span>
-                        ${ports ? `<span class="c-ports">${ports}</span>` : ''}
+                        ${ports ? `<span class="c-ports">${escHtml(ports)}</span>` : ''}
                     </div>
+                    ${actions}
                 </div>`;
             }).join('');
         }
 
         // Load container list on page open
         refreshContainers();
+
+        // ============================================================
+        // Exec terminal + Live logs (Final Phase)
+        // ============================================================
+
+        let terminalMode         = null;  // null | 'exec' | 'logs'
+        let execInputDisposable  = null;  // xterm onData disposable
+        let execResizeDisposable = null;  // xterm onResize disposable
+
+        function enterMode(mode, containerName) {
+            terminalMode = mode;
+
+            const label = document.getElementById('td-mode-label');
+            label.textContent   = 'SHELL';
+            label.className     = 'exec';
+            label.style.display = 'inline-block';
+
+            document.getElementById('td-session').textContent    = containerName;
+            document.getElementById('td-exit-btn').style.display = 'inline-block';
+            stopElapsedTimer();
+            document.getElementById('td-elapsed').textContent    = '';
+
+            if (execInputDisposable)  { execInputDisposable.dispose();  execInputDisposable  = null; }
+            if (execResizeDisposable) { execResizeDisposable.dispose(); execResizeDisposable = null; }
+
+            execInputDisposable  = term.onData(data => socket.emit('exec:input', { data }));
+            execResizeDisposable = term.onResize(({ cols, rows }) =>
+                socket.emit('exec:resize', { cols, rows })
+            );
+        }
+
+        function exitTerminalMode() {
+            if (terminalMode === 'exec') socket.emit('exec:stop');
+            terminalMode = null;
+            if (execInputDisposable)  { execInputDisposable.dispose();  execInputDisposable  = null; }
+            if (execResizeDisposable) { execResizeDisposable.dispose(); execResizeDisposable = null; }
+
+            document.getElementById('td-mode-label').style.display = 'none';
+            document.getElementById('td-session').textContent      = '';
+            document.getElementById('td-exit-btn').style.display   = 'none';
+        }
+
+        function startExec(containerId, containerName) {
+            clearTerminal();
+            enterMode('exec', containerName);
+            appendTerminalLine(`Connecting shell to "${containerName}"…`, 'system');
+            appendTerminalLine('Type "exit" or click Exit to end the session.', 'system');
+            appendTerminalLine('', 'info');
+            socket.emit('exec:start', { containerId });
+        }
+
+        function startLogs(containerId, containerName) {
+            document.getElementById('log-pane').style.display   = 'block';
+            document.getElementById('log-pane-name').textContent = containerName;
+            logTerm.clear();
+            logFitAddon.fit();
+            logTerm.writeln('\x1b[36mStreaming logs from "' + containerName + '" (last 200 lines)…\x1b[0m');
+            logTerm.writeln('\x1b[36m' + '─'.repeat(50) + '\x1b[0m');
+            logTerm.writeln('');
+            socket.emit('logs:start', { containerId });
+        }
+
+        function stopLogPane() {
+            socket.emit('logs:stop');
+            document.getElementById('log-pane').style.display = 'none';
+        }
+
+        // Exec output: raw TTY bytes — write directly (no newline added)
+        socket.on('exec:output', ({ data }) => {
+            term.write(data);
+        });
+
+        socket.on('exec:ended', ({ error } = {}) => {
+            if (error) appendTerminalLine(`\r\n\x1b[91mShell error: ${error}\x1b[0m`, 'error');
+            else       term.write('\r\n\x1b[36m[Session ended]\x1b[0m\r\n');
+            exitTerminalMode();
+        });
+
+        // Log output: write to the dedicated log pane (demuxed lines already have newlines)
+        socket.on('logs:output', ({ data }) => {
+            logTerm.write(data);
+        });
+
+        socket.on('logs:ended', ({ error } = {}) => {
+            if (error) logTerm.writeln('\r\n\x1b[91mLog stream error: ' + error + '\x1b[0m');
+            else       logTerm.write('\r\n\x1b[36m[Log stream ended]\x1b[0m\r\n');
+        });
 
         // ============================================================
         // Phase 5 — Download ZIP

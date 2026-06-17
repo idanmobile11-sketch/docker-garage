@@ -21,7 +21,7 @@ const { router: testdriveRoute,
 const preflightRoute            = require('./routes/preflight');
 
 // --- Docker engine (Phase 3) ---
-const { getDockerInfo, listContainers, terminateAllManaged } = require('./engine/dockerEngine');
+const { docker, getDockerInfo, listContainers, terminateAllManaged } = require('./engine/dockerEngine');
 
 // =============================================================================
 // 1. Express + HTTP server
@@ -92,10 +92,26 @@ app.get('/api/containers', async (req, res) => {
 // 5. WebSocket events
 // =============================================================================
 
+// Active exec and log sessions keyed by socket ID
+const execSessions = new Map(); // socketId → { stream, exec }
+const logSessions  = new Map(); // socketId → stream
+
+function cleanupExecSession(socketId) {
+  const session = execSessions.get(socketId);
+  if (session?.stream) { try { session.stream.destroy(); } catch {} }
+  execSessions.delete(socketId);
+}
+
+function cleanupLogSession(socketId) {
+  const stream = logSessions.get(socketId);
+  if (stream) { try { stream.destroy(); } catch {} }
+  logSessions.delete(socketId);
+}
+
 io.on('connection', (socket) => {
   console.log(`[Socket.io] Client connected  : ${socket.id}`);
 
-  // The client can request a container list update at any time
+  // ---- Container list ----
   socket.on('containers:refresh', async () => {
     try {
       const containers = await listContainers();
@@ -105,15 +121,97 @@ io.on('connection', (socket) => {
     }
   });
 
-  // testdrive:log, testdrive:done, testdrive:stopped are emitted by
-  // dockerEngine.runComposeUp() / runComposeDown() directly to the socket
-  // — no handler registration needed here, just document them:
-  //
-  //   testdrive:log     { line, level, ts }   — a single terminal line
-  //   testdrive:done    { success, projectName } — compose finished
-  //   testdrive:stopped { projectName }        — compose down finished
+  // ---- Exec terminal ----
+  // Opens an interactive shell (sh) inside the target container.
+  // Uses Tty:true so the stream is raw bytes — no demux needed.
+  socket.on('exec:start', async ({ containerId }) => {
+    cleanupExecSession(socket.id);
+
+    try {
+      const container = docker.getContainer(containerId);
+      const exec = await container.exec({
+        Cmd:          ['sh'],
+        AttachStdin:  true,
+        AttachStdout: true,
+        AttachStderr: true,
+        Tty:          true,
+      });
+
+      const stream = await exec.start({ hijack: true, stdin: true });
+      execSessions.set(socket.id, { stream, exec });
+
+      stream.on('data', (chunk) => {
+        socket.emit('exec:output', { data: chunk.toString('utf8') });
+      });
+
+      stream.on('end', () => {
+        execSessions.delete(socket.id);
+        socket.emit('exec:ended', {});
+      });
+
+      stream.on('error', (err) => {
+        execSessions.delete(socket.id);
+        socket.emit('exec:ended', { error: err.message });
+      });
+
+    } catch (err) {
+      log.error('[Exec] exec:start failed', err);
+      socket.emit('exec:ended', { error: err.message });
+    }
+  });
+
+  socket.on('exec:input', ({ data }) => {
+    const session = execSessions.get(socket.id);
+    if (session?.stream) { try { session.stream.write(data); } catch {} }
+  });
+
+  socket.on('exec:resize', ({ cols, rows }) => {
+    const session = execSessions.get(socket.id);
+    if (session?.exec) {
+      session.exec.resize({ h: rows, w: cols }).catch(() => {});
+    }
+  });
+
+  socket.on('exec:stop', () => cleanupExecSession(socket.id));
+
+  // ---- Live container logs ----
+  // Streams docker logs -f output for the given container.
+  // compose containers have no TTY by default — stream is multiplexed.
+  socket.on('logs:start', async ({ containerId }) => {
+    cleanupLogSession(socket.id);
+
+    try {
+      const container = docker.getContainer(containerId);
+      const stream = await container.logs({
+        follow:     true,
+        stdout:     true,
+        stderr:     true,
+        timestamps: false,
+        tail:       200,
+      });
+
+      logSessions.set(socket.id, stream);
+
+      const emitChunk = { write(chunk) { socket.emit('logs:output', { data: chunk.toString('utf8') }); } };
+      docker.modem.demuxStream(stream, emitChunk, emitChunk);
+
+      stream.on('end',   ()    => { logSessions.delete(socket.id); socket.emit('logs:ended', {}); });
+      stream.on('error', (err) => { logSessions.delete(socket.id); socket.emit('logs:ended', { error: err.message }); });
+
+    } catch (err) {
+      log.error('[Logs] logs:start failed', err);
+      socket.emit('logs:ended', { error: err.message });
+    }
+  });
+
+  socket.on('logs:stop', () => cleanupLogSession(socket.id));
+
+  // testdrive:log / testdrive:done / testdrive:stopped are emitted directly
+  // by dockerEngine — no handler needed here.
 
   socket.on('disconnect', (reason) => {
+    cleanupExecSession(socket.id);
+    cleanupLogSession(socket.id);
     console.log(`[Socket.io] Client disconnected: ${socket.id} (${reason})`);
   });
 });
