@@ -29,11 +29,12 @@ const BASE_IMAGE_MAP = {
   golang: (v) => `golang:${v || '1.22'}-alpine`,
   php:    (v) => `php:${v || '8.3'}-fpm-alpine`,
   nginx:  (v) => `nginx:${v || 'stable'}-alpine`,
-  ubuntu: (v) => {
-    const map = { '20': '20.04', '22': '22.04', '24': '24.04' };
-    const tag = v ? (map[v] || v) : '24.04';
-    return `ubuntu:${tag}`;
-  },
+  ubuntu: (v) => { const m = { '20': '20.04', '22': '22.04', '24': '24.04' }; return `ubuntu:${m[v] || v || '24.04'}`; },
+  ruby:   (v) => `ruby:${v || '3.3'}-alpine`,
+  java:   (v) => `eclipse-temurin:${v || '21'}-jdk-alpine`,
+  rust:   (v) => `rust:${v || '1.77'}-alpine`,
+  bun:    (v) => `oven/bun:${v || '1'}-alpine`,
+  dotnet: (v) => `mcr.microsoft.com/dotnet/sdk:${v || '8.0'}`,
 };
 
 const router = Router();
@@ -62,7 +63,10 @@ router.post('/', async (req, res) => {
   });
 
   // ---- Collect all ports this config needs ----
-  const DEFAULT_PORTS = { node: 3000, python: 8000, golang: 8080, php: 9000, nginx: 80, ubuntu: 8080 };
+  const DEFAULT_PORTS = {
+    node: 3000, python: 8000, golang: 8080, php: 9000, nginx: 80, ubuntu: 8080,
+    ruby: 3000, java: 8080, rust: 8080, bun: 3000, dotnet: 5000,
+  };
   const portSet = new Set();
 
   // App port

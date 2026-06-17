@@ -37,7 +37,7 @@ const { generateCompose }    = require('../generator/composeGenerator');
 const router = Router();
 
 // ---- Constants ----
-const VALID_BASES      = ['node', 'python', 'golang', 'php', 'nginx', 'ubuntu'];
+const VALID_BASES      = ['node', 'python', 'golang', 'php', 'nginx', 'ubuntu', 'ruby', 'java', 'rust', 'bun', 'dotnet'];
 const VALID_SERVICES   = [
   'redis', 'postgres', 'mysql', 'mongodb', 'nginx', 'rabbitmq',
   'elasticsearch', 'kibana', 'memcached', 'minio', 'mailpit', 'adminer',
@@ -155,6 +155,7 @@ router.post('/generate', (req, res) => {
     services:        body.services || [],
     networkDriver:   body.networkDriver   || 'bridge',
     networkTopology: body.networkTopology || 'flat',
+    customCmd:       body.customCmd?.trim() || undefined,
     options: {
       nonRootUser:  body.options?.nonRootUser  ?? true,
       namedVolumes: body.options?.namedVolumes ?? true,

@@ -29,6 +29,11 @@ const BASE_IMAGES = {
   php:    (v) => `php:${v || '8.3'}-fpm-alpine`,
   nginx:  (v) => `nginx:${v || 'stable'}-alpine`,
   ubuntu: (v) => `ubuntu:${ubuntuTag(v)}`,
+  ruby:   (v) => `ruby:${v || '3.3'}-alpine`,
+  java:   (v) => `eclipse-temurin:${v || '21'}-jdk-alpine`,
+  rust:   (v) => `rust:${v || '1.77'}-alpine`,
+  bun:    (v) => `oven/bun:${v || '1'}-alpine`,
+  dotnet: (v) => `mcr.microsoft.com/dotnet/sdk:${v || '8.0'}`,
 };
 
 // Default ports for each base (used if the user didn't specify one)
@@ -39,6 +44,11 @@ const DEFAULT_PORTS = {
   php:    9000,
   nginx:  80,
   ubuntu: 8080,
+  ruby:   3000,
+  java:   8080,
+  rust:   8080,
+  bun:    3000,
+  dotnet: 5000,
 };
 
 // ---------------------------------------------------------------------------
@@ -48,7 +58,7 @@ const DEFAULT_PORTS = {
 // Returns true if the base image is Alpine-based.
 // Alpine uses `addgroup`/`adduser` instead of `groupadd`/`useradd`.
 function isAlpine(base) {
-  return ['node', 'golang', 'php', 'nginx'].includes(base);
+  return ['node', 'golang', 'php', 'nginx', 'ruby', 'java', 'rust', 'bun'].includes(base);
 }
 
 // Builds lines for creating a non-root user depending on the base OS
@@ -130,13 +140,60 @@ function dependencyLines(base) {
         'COPY ./nginx.conf /etc/nginx/nginx.conf',
       ];
 
+    case 'ruby':
+      return [
+        'COPY Gemfile Gemfile.lock ./',
+        'RUN bundle install --without development test',
+        '',
+        'COPY . .',
+      ];
+
+    case 'java':
+      return [
+        '# Copy the pre-built JAR (run "mvn package" or "gradle build" first).',
+        'COPY target/*.jar app.jar',
+      ];
+
+    case 'rust':
+      return [
+        'COPY Cargo.toml Cargo.lock ./',
+        '# Pre-fetch dependencies for layer caching.',
+        'RUN mkdir src && echo "fn main(){}" > src/main.rs && cargo build --release && rm -rf src',
+        '',
+        'COPY . .',
+        'RUN cargo build --release',
+        'RUN cp target/release/$(ls target/release/ | grep -v "\\." | head -1) /usr/local/bin/app',
+      ];
+
+    case 'bun':
+      return [
+        'COPY package.json bun.lockb* ./',
+        'RUN bun install --frozen-lockfile',
+        '',
+        'COPY . .',
+      ];
+
+    case 'dotnet':
+      return [
+        'COPY *.csproj ./',
+        'RUN dotnet restore',
+        '',
+        'COPY . .',
+        'RUN dotnet publish -c Release -o /app/publish',
+        'WORKDIR /app/publish',
+      ];
+
     default: // ubuntu or unknown
       return ['COPY . .'];
   }
 }
 
-// Builds the CMD instruction for each base
-function cmdLine(base) {
+// Builds the CMD instruction for each base (or uses a custom command)
+function cmdLine(base, customCmd) {
+  if (customCmd && customCmd.trim()) {
+    const parts = customCmd.trim().split(/\s+/);
+    return 'CMD [' + parts.map(p => `"${p}"`).join(', ') + ']';
+  }
   const cmds = {
     node:   'CMD ["node", "src/index.js"]',
     python: 'CMD ["python", "app.py"]',
@@ -144,6 +201,11 @@ function cmdLine(base) {
     php:    'CMD ["php-fpm"]',
     nginx:  'CMD ["nginx", "-g", "daemon off;"]',
     ubuntu: 'CMD ["/bin/bash"]',
+    ruby:   'CMD ["ruby", "app.rb"]',
+    java:   'CMD ["java", "-jar", "app.jar"]',
+    rust:   'CMD ["/usr/local/bin/app"]',
+    bun:    'CMD ["bun", "run", "start"]',
+    dotnet: 'CMD ["dotnet", "app.dll"]',
   };
   return cmds[base] || 'CMD ["/bin/sh"]';
 }
@@ -166,7 +228,7 @@ function cmdLine(base) {
  * @returns {string} Full Dockerfile content
  */
 function generateDockerfile(config) {
-  const { base, version, appName = 'my-app', options = {} } = config;
+  const { base, version, appName = 'my-app', options = {}, customCmd } = config;
   const port = config.port || DEFAULT_PORTS[base] || 3000;
   const image = BASE_IMAGES[base] ? BASE_IMAGES[base](version) : `${base}:${version || 'latest'}`;
 
@@ -233,7 +295,7 @@ function generateDockerfile(config) {
   // ---- CMD ----
   lines.push('# The default command to run when the container starts.');
   lines.push('# Can be overridden with "command:" in docker-compose.yml.');
-  lines.push(cmdLine(base));
+  lines.push(cmdLine(base, customCmd));
 
   return lines.join('\n');
 }

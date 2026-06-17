@@ -24,7 +24,9 @@
 
 const { Router } = require('express');
 const { randomUUID } = require('crypto'); // built into Node.js 14+
-const log = require('../logger');
+const fs   = require('fs');
+const path = require('path');
+const log  = require('../logger');
 
 const { generateDockerfile } = require('../generator/dockerfileGenerator');
 const { generateCompose }    = require('../generator/composeGenerator');
@@ -74,11 +76,13 @@ router.post('/start', async (req, res) => {
   // Generate a unique ID for this test-drive session
   const sessionId = randomUUID();
 
-  // Generate the Dockerfile + compose strings (reuse Phase 2 logic)
+  // Generate the Dockerfile (shown in preview) + a test-drive-specific compose
+  // that uses `image:` instead of `build: '.'` — there's no app source code in the
+  // session dir, so building the Dockerfile would fail immediately for every runtime.
   let dockerfile, compose;
   try {
     dockerfile = generateDockerfile(config);
-    compose    = generateCompose(config);
+    compose    = generateCompose({ ...config, _testDriveMode: true });
   } catch (err) {
     return res.status(500).json({ error: 'Generator failed', message: err.message });
   }
@@ -87,6 +91,28 @@ router.post('/start', async (req, res) => {
   let sessionDir;
   try {
     sessionDir = writeGeneratedFiles(sessionId, dockerfile, compose);
+
+    // The nginx service template bind-mounts ./nginx.conf — write a working stub
+    // so Test Drive doesn't fail with "bind source path does not exist".
+    if (Array.isArray(config.services) && config.services.includes('nginx')) {
+      const stubNginxConf = [
+        '# Auto-generated stub by Docker Garage Test Drive',
+        '# Replace with your own nginx.conf for production use.',
+        'events { worker_connections 1024; }',
+        'http {',
+        '  server {',
+        '    listen 80;',
+        '    location / {',
+        '      return 200 "Docker Garage Test Drive — nginx OK\\n";',
+        '      add_header Content-Type text/plain;',
+        '    }',
+        '  }',
+        '}',
+      ].join('\n');
+      fs.writeFileSync(path.join(sessionDir, 'nginx.conf'), stubNginxConf, 'utf8');
+      log.info('[TestDrive] Wrote stub nginx.conf for test drive session');
+    }
+
     log.success(`[TestDrive] Files written — session=${sessionId}`);
   } catch (err) {
     log.error(`[TestDrive] writeGeneratedFiles failed — session=${sessionId}`, err);

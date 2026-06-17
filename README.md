@@ -8,7 +8,7 @@ A beginner-friendly web app for visually configuring, generating, and live-testi
 
 ## What it does
 
-- **Blueprint Engine** — pick a base runtime (Node.js, Python, Go, PHP, Nginx, Ubuntu), add auxiliary services, tune options, choose a network topology, and instantly get a production-ready `Dockerfile` + `docker-compose.yml`
+- **Blueprint Engine** — pick a base runtime (Node.js, Python, Go, PHP, Nginx, Ubuntu, Ruby, Java, Rust, Bun, .NET), add auxiliary services, tune options, choose a network topology, and instantly get a production-ready `Dockerfile` + `docker-compose.yml`
 - **Download ZIP** — export the full stack as a ZIP (`Dockerfile`, `docker-compose.yml`, `.env.example`, `README.md`) with one click
 - **Saved Presets** — save any config to `localStorage` and reload it later; overwrite-safe with a name-collision guard
 - **Pre-flight check** — before launching, see which images are cached locally vs. need a pull, and which ports are already in use
@@ -92,7 +92,7 @@ docker-garage/
 │   │   ├── dockerEngine.js        # Dockerode wrapper — compose up/down, log streaming, cleanup
 │   │   └── portChecker.js         # Port availability checks
 │   ├── generator/
-│   │   ├── dockerfileGenerator.js # Dockerfile string builder (6 base runtimes)
+│   │   ├── dockerfileGenerator.js # Dockerfile string builder (11 base runtimes)
 │   │   ├── composeGenerator.js    # docker-compose.yml string builder + network topology
 │   │   └── serviceTemplates.js    # 12 auxiliary service definitions
 │   └── routes/
@@ -120,6 +120,11 @@ docker-garage/
 | PHP | `php:8.3-fpm-alpine` |
 | Nginx | `nginx:stable-alpine` |
 | Ubuntu | `ubuntu:24.04` |
+| Ruby | `ruby:3.3-alpine` |
+| Java | `eclipse-temurin:21-jdk-alpine` |
+| Rust | `rust:1.77-alpine` |
+| Bun | `oven/bun:1-alpine` |
+| .NET | `mcr.microsoft.com/dotnet/sdk:8.0` |
 
 ## Supported services
 

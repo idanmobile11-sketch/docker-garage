@@ -15,7 +15,30 @@
 const { SERVICE_TEMPLATES, SERVICE_VOLUMES } = require('./serviceTemplates');
 
 // Default app ports per base runtime
-const DEFAULT_PORTS = { node: 3000, python: 8000, golang: 8080, php: 9000, nginx: 80, ubuntu: 8080 };
+const DEFAULT_PORTS = {
+  node: 3000, python: 8000, golang: 8080, php: 9000, nginx: 80, ubuntu: 8080,
+  ruby: 3000, java: 8080, rust: 8080, bun: 3000, dotnet: 5000,
+};
+
+// Maps base name → Docker Hub image tag.
+// Used in Test Drive mode so the compose runs the base image directly
+// instead of trying to `build: '.'` (which needs source code that doesn't exist yet).
+function buildBaseImage(base, version) {
+  const map = {
+    node:   (v) => `node:${v || '20'}-alpine`,
+    python: (v) => `python:${v || '3.12'}-slim`,
+    golang: (v) => `golang:${v || '1.22'}-alpine`,
+    php:    (v) => `php:${v || '8.3'}-fpm-alpine`,
+    nginx:  (v) => `nginx:${v || 'stable'}-alpine`,
+    ubuntu: (v) => { const m = { '20': '20.04', '22': '22.04', '24': '24.04' }; return `ubuntu:${m[v] || v || '24.04'}`; },
+    ruby:   (v) => `ruby:${v || '3.3'}-alpine`,
+    java:   (v) => `eclipse-temurin:${v || '21'}-jdk-alpine`,
+    rust:   (v) => `rust:${v || '1.77'}-alpine`,
+    bun:    (v) => `oven/bun:${v || '1'}-alpine`,
+    dotnet: (v) => `mcr.microsoft.com/dotnet/sdk:${v || '8.0'}`,
+  };
+  return map[base] ? map[base](version) : `${base}:${version || 'latest'}`;
+}
 
 // ---------------------------------------------------------------------------
 // Network topology helpers
@@ -142,21 +165,27 @@ function toYaml(value, depth = 0) {
 // ---------------------------------------------------------------------------
 
 function buildAppService(config) {
-  const { appName, base, port, services = [], options = {}, _appNetworks } = config;
+  const { appName, base, version, port, services = [], options = {}, _appNetworks, _testDriveMode } = config;
   const appPort = port || DEFAULT_PORTS[base] || 3000;
 
-  const serviceObj = {
-    build: '.',
-    container_name: appName,
-    labels: { 'com.docker-garage.managed': 'true' },
-    ports: [`${appPort}:${appPort}`],
-    environment: {
-      NODE_ENV: 'production',
-      PORT: String(appPort),
-    },
-    networks: _appNetworks || [`${appName}_network`],
-    restart: 'unless-stopped',
-  };
+  const serviceObj = {};
+
+  if (_testDriveMode) {
+    // In Test Drive we don't have source code, so skip the build step entirely.
+    // Pull and run the base image directly with a sleep process so the container
+    // stays alive and all dependency health checks can complete.
+    serviceObj.image   = buildBaseImage(base, version);
+    serviceObj.command = 'tail -f /dev/null';
+  } else {
+    serviceObj.build = '.';
+  }
+
+  serviceObj.container_name = appName;
+  serviceObj.labels         = { 'com.docker-garage.managed': 'true' };
+  serviceObj.ports          = [`${appPort}:${appPort}`];
+  serviceObj.environment    = { NODE_ENV: 'production', PORT: String(appPort) };
+  serviceObj.networks       = _appNetworks || [`${appName}_network`];
+  serviceObj.restart        = 'unless-stopped';
 
   // Named volume for app data (optional)
   if (options.namedVolumes) {
@@ -209,6 +238,7 @@ function generateCompose(config) {
     networkDriver = 'bridge',
     networkTopology = 'flat',
     options = {},
+    _testDriveMode = false,
   } = config;
 
   // host driver shares the host network stack — named networks don't apply
@@ -233,7 +263,7 @@ function generateCompose(config) {
   lines.push('');
   lines.push(`  # Your application container`);
   lines.push(`  ${appName}:`);
-  const appService = buildAppService({ ...config, _appNetworks: appNets });
+  const appService = buildAppService({ ...config, _appNetworks: appNets, _testDriveMode });
   lines.push(toYaml(appService, 2));
 
   // ---- Auxiliary services ----
