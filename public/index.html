@@ -64,14 +64,6 @@
         /* ---- Section headers ---- */
         .card h2 { font-size: 0.78rem; color: #8b949e; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
 
-        /* ---- Phase roadmap ---- */
-        .phase-item { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid #21262d; font-size: 0.84rem; }
-        .phase-item:last-child { border-bottom: none; }
-        .badge { padding: 2px 8px; border-radius: 20px; font-size: 0.68rem; font-weight: bold; white-space: nowrap; }
-        .badge.done         { background: #1f6feb; color: #fff; }
-        .badge.pending      { background: #21262d; color: #8b949e; }
-        .badge.active-phase { background: #238636; color: #fff; animation: glow 2s ease-in-out infinite; }
-        @keyframes glow { 0%,100%{box-shadow:0 0 4px #3fb950} 50%{box-shadow:0 0 14px #3fb950} }
 
         /* ---- Generator panel ---- */
         .gen-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
@@ -736,34 +728,6 @@
         </div>
     </div>
 
-    <!-- ===== ROADMAP ===== -->
-    <div class="card">
-        <h2>Build Roadmap</h2>
-        <div class="phase-item">
-            <span class="badge done">DONE</span>
-            <span>Phase 1 — Scaffolding &amp; Containerization</span>
-        </div>
-        <div class="phase-item">
-            <span class="badge done">DONE</span>
-            <span>Phase 2 — Dockerfile &amp; Compose Generator</span>
-        </div>
-        <div class="phase-item">
-            <span class="badge done">DONE</span>
-            <span>Phase 3 — Docker Engine &amp; WebSocket Streaming</span>
-        </div>
-        <div class="phase-item">
-            <span class="badge done">DONE</span>
-            <span>Phase 4 — Showroom UI &amp; xterm.js Terminal</span>
-        </div>
-        <div class="phase-item">
-            <span class="badge done">DONE</span>
-            <span>Phase 5 — Export ZIP, Saved Presets &amp; Network Topology</span>
-        </div>
-        <div class="phase-item">
-            <span class="badge active-phase">NOW</span>
-            <span>Final Phase — Exec Shell &amp; Live Container Logs</span>
-        </div>
-    </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
