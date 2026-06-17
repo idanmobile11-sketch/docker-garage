@@ -53,12 +53,18 @@ const activeSessions = new Map();
 // POST /api/testdrive/start
 // ---------------------------------------------------------------------------
 
+// Must match the same rule enforced by generate.js to prevent command injection.
+const APP_NAME_REGEX = /^[a-z0-9][a-z0-9_-]{1,62}$/;
+
 router.post('/start', async (req, res) => {
   const { config, socketId } = req.body;
 
   // Basic guards
   if (!config || !config.appName || !config.base) {
     return res.status(400).json({ error: 'config.appName and config.base are required.' });
+  }
+  if (!APP_NAME_REGEX.test(config.appName)) {
+    return res.status(400).json({ error: '"appName" must be 2–63 characters, lowercase alphanumeric, hyphens, or underscores.' });
   }
   if (!socketId) {
     return res.status(400).json({ error: 'socketId is required to stream logs.' });

@@ -33,7 +33,7 @@ const server = http.createServer(app);
 // 2. Socket.io
 // =============================================================================
 const io = new Server(server, {
-  cors: { origin: '*', methods: ['GET', 'POST'] },
+  cors: { origin: process.env.CORS_ORIGIN || 'http://localhost:3000', methods: ['GET', 'POST'] },
 });
 
 // Inject io into the testdrive route so it can look up sockets by ID
@@ -129,6 +129,11 @@ io.on('connection', (socket) => {
 
     try {
       const container = docker.getContainer(containerId);
+      const info = await container.inspect();
+      if (info.Config?.Labels?.['com.docker-garage.managed'] !== 'true') {
+        socket.emit('exec:ended', { error: 'Access denied: not a Docker Garage managed container.' });
+        return;
+      }
       const exec = await container.exec({
         Cmd:          ['sh'],
         AttachStdin:  true,
@@ -182,6 +187,11 @@ io.on('connection', (socket) => {
 
     try {
       const container = docker.getContainer(containerId);
+      const info = await container.inspect();
+      if (info.Config?.Labels?.['com.docker-garage.managed'] !== 'true') {
+        socket.emit('logs:ended', { error: 'Access denied: not a Docker Garage managed container.' });
+        return;
+      }
       const stream = await container.logs({
         follow:     true,
         stdout:     true,

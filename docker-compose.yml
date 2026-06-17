@@ -23,8 +23,8 @@ services:
       dockerfile: Dockerfile.dev
     container_name: docker-garage-app
     ports:
-      # Map host port 3000 to container port 3000
-      - "3000:3000"
+      # Bind only to localhost — never expose Docker control to the network.
+      - "127.0.0.1:3000:3000"
     volumes:
       # --- Source code mounts (enables hot-reload with nodemon) ---
       - ./src:/app/src

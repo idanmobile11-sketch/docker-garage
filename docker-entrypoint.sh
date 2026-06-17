@@ -42,9 +42,10 @@ if [ -S /var/run/docker.sock ]; then
         adduser appuser "$GROUP_NAME" 2>/dev/null || true
     else
         # Socket is root-owned (common on Docker Desktop / WSL2).
-        # Make it world-readable/writable so appuser can connect.
-        echo "[Entrypoint] Socket is root-owned. Opening permissions..."
-        chmod 666 /var/run/docker.sock 2>/dev/null || true
+        # Add appuser to the root group so it can access the socket
+        # without making it world-readable.
+        echo "[Entrypoint] Socket is root-owned. Adding appuser to root group..."
+        adduser appuser root 2>/dev/null || true
     fi
 
     echo "[Entrypoint] Docker socket is ready."
