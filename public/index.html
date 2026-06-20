@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Docker Garage</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="/vendor/xterm/css/xterm.css" />
     <script src="/vendor/xterm/lib/xterm.js"></script>
@@ -14,7 +17,7 @@
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
-            font-family: 'Courier New', Courier, monospace;
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
             background: #0d1117;
             color: #c9d1d9;
             display: flex;
@@ -265,7 +268,7 @@
             border: 1px solid #3fb950;
         }
         #log-pane-name {
-            font-family: 'Courier New', Courier, monospace;
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
             font-size: 0.94rem;
             color: #7ee787;
         }
@@ -538,10 +541,10 @@
             background-size: 22px 22px;
         }
 
-        /* Card lift — now they visibly float above the dot grid */
+        /* Card lift — tinted shadow matches the dark-blue palette */
         .card {
             border-top: 3px solid #21262d;
-            box-shadow: 0 4px 28px rgba(0,0,0,0.5);
+            box-shadow: 0 4px 32px rgba(4, 12, 26, 0.72), 0 1px 0 rgba(88,166,255,0.04);
         }
 
         /* Each section has its own color identity */
@@ -549,9 +552,9 @@
         #blueprint-card { border-top-color: #8b5cf6; }
         #testdrive-card { border-top-color: #e8952b; }
 
-        /* Hero H1: blue → purple gradient — not just blue text anymore */
+        /* Hero H1: blue → cyan gradient — Docker-territory, not AI purple */
         .hero h1 {
-            background: linear-gradient(120deg, #79c0ff 0%, #58a6ff 45%, #bc8cff 100%);
+            background: linear-gradient(120deg, #58a6ff 0%, #79c0ff 50%, #39c5cf 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -675,6 +678,92 @@
         .runtime-card .rt-ver { font-size: 0.8rem; }
         .service-group .cat-label { font-size: 0.8rem; }
         .blueprint-title { font-size: 0.88rem; }
+
+        /* ================================================================
+           Polish Pass — active states, focus rings, smooth scroll
+           ================================================================ */
+
+        html { scroll-behavior: smooth; }
+
+        /* Physical press feedback on all buttons */
+        .gen-btn:active,
+        .wiz-btn:active,
+        .tab-btn:active,
+        .copy-btn:active,
+        .pill:active,
+        .refresh-btn:active,
+        .c-action-btn:active,
+        #layout-toggle-btn:active {
+            transform: scale(0.96) translateY(1px);
+            transition: transform 0.08s;
+        }
+
+        /* Subtle upward lift on hover for primary action buttons */
+        .gen-btn:not(:disabled):hover {
+            transform: translateY(-1px);
+        }
+        .gen-btn:not(:disabled):active {
+            transform: scale(0.97) translateY(0px);
+        }
+
+        /* Focus-visible: keyboard-accessible focus rings */
+        :focus-visible {
+            outline: 2px solid #58a6ff;
+            outline-offset: 2px;
+            border-radius: 4px;
+        }
+
+        /* Larger, bolder hero H1 */
+        .hero h1 {
+            font-size: 3rem;
+            letter-spacing: -1.5px;
+            line-height: 1.1;
+        }
+        .hero p.subtitle {
+            font-size: 1.05rem;
+            text-wrap: balance;
+        }
+
+        /* Section H2: more presence, less timid */
+        .card h2 {
+            font-size: 1.05rem;
+            letter-spacing: 0.5px;
+            font-weight: 700;
+            color: #e6edf3;
+        }
+
+        /* Runtime card: smooth transition on all properties */
+        .runtime-card {
+            transition: border-color 0.18s, background 0.18s, box-shadow 0.18s, transform 0.18s;
+        }
+        .runtime-card:hover:not(.active) {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 14px rgba(4,12,26,0.6);
+        }
+
+        /* Topo cards: same lift on hover */
+        .topo-card {
+            transition: border-color 0.18s, background 0.18s, box-shadow 0.18s, transform 0.18s;
+        }
+        .topo-card:hover:not(.active) {
+            transform: translateY(-1px);
+        }
+
+        /* Pill transitions */
+        .pill { transition: all 0.14s; }
+        .pill:hover:not(.disabled):not(.active) {
+            border-color: #484f58;
+            color: #e6edf3;
+            transform: translateY(-1px);
+        }
+
+        /* Stack panel container items: hover elevation */
+        .container-item {
+            transition: border-left-color 0.15s, box-shadow 0.15s;
+        }
+        .container-item:hover {
+            box-shadow: 0 2px 12px rgba(4,12,26,0.5);
+        }
     </style>
 </head>
 <body>
@@ -1095,7 +1184,7 @@
                 brightRed:    '#ffa198',
                 brightWhite:  '#e6edf3',
             },
-            fontFamily: "'Courier New', Courier, monospace",
+            fontFamily: "'JetBrains Mono', 'Courier New', monospace",
             fontSize: 13,
             lineHeight: 1.5,
             scrollback: 5000,
@@ -1144,7 +1233,7 @@
                 brightRed:    '#ffa198',
                 brightWhite:  '#e6edf3',
             },
-            fontFamily: "'Courier New', Courier, monospace",
+            fontFamily: "'JetBrains Mono', 'Courier New', monospace",
             fontSize:   12,
             lineHeight: 1.5,
             scrollback: 5000,
