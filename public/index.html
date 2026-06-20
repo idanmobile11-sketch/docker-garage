@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Docker Garage</title>
+    <link rel="icon" href="/logo.svg" type="image/svg+xml">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -39,7 +40,7 @@
 
         /* ---- Hero banner ---- */
         .hero { text-align: center; border: 2px solid #30363d; }
-        .hero-logo { width: 180px; height: auto; margin: 0 auto 16px; display: block; filter: invert(1) brightness(0.85); }
+        .hero-logo { width: 260px; height: auto; margin: 0 auto 20px; display: block; filter: invert(1) brightness(0.85); }
         .hero h1 { font-size: 2.6rem; color: #58a6ff; margin-bottom: 6px; letter-spacing: -1px; }
         .hero p.subtitle { color: #adbac7; font-size: 1rem; margin-bottom: 24px; }
 
@@ -763,6 +764,62 @@
         }
         .container-item:hover {
             box-shadow: 0 2px 12px rgba(4,12,26,0.5);
+        }
+
+        /* ================================================================
+           Texture, Glow & Entrance
+           ================================================================ */
+
+        /* Grain noise overlay — pointer-events:none so terminals still get mouse events */
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0.032;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n' x='0' y='0'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
+            background-repeat: repeat;
+            background-size: 300px 300px;
+        }
+
+        /* Hero ambient glow — radial blue halo behind the logo and title */
+        .hero {
+            position: relative;
+            overflow: hidden;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -60px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 560px;
+            height: 320px;
+            background: radial-gradient(ellipse at 50% 0%, rgba(56,139,253,0.14) 0%, transparent 68%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .hero > * { position: relative; z-index: 1; }
+
+        /* Staggered card entrance on load */
+        @keyframes card-enter {
+            from { opacity: 0; transform: translateY(18px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        body > .card {
+            animation: card-enter 0.55s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+        }
+        body > .card:nth-child(1) { animation-delay: 0ms; }
+        body > .card:nth-child(2) { animation-delay: 95ms; }
+        body > .card:nth-child(3) { animation-delay: 190ms; }
+
+        /* Service category labels: ditch all-caps, stay distinct */
+        .service-group .cat-label {
+            text-transform: none;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            color: #8b949e;
         }
     </style>
 </head>
