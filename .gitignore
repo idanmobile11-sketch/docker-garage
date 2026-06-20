@@ -1,6 +1,7 @@
 node_modules/
 .env
 .env.*
+.claude
 
 # TLS certificates — never commit private keys
 nginx/certs/
